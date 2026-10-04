@@ -1,0 +1,75 @@
+{
+  "streams": [
+    {
+      "behaviorHints": {
+        "bingeGroup": "com.aiostreams.viren070|2160p|BluRay REMUX|FGT",
+        "filename": "Toy.Story.4.2019.2160p.BluRay.REMUX.HEVC.DTS-HD.MA.TrueHD.7.1.Atmos-FGT.mkv",
+        "folderSize": 83442764920,
+        "videoHash": "6c9ea5422a3c6c2f",
+        "videoSize": 41721382429
+      },
+      "description": "🎬 Toy Story 4 (2019) \n🎥 BluRay REMUX 📺 HDR10 🎞️ HEVC ⏱️ 1h:40m:3s \n🎧 TrueHD | DTS-HD MA | DD | DD+ | Atmos 🔊 7.1 | 5.1 | 2.0 🗣️ 🇬🇧 / 🇫🇷 / 🇪🇸📝 🇬🇧 / 🇫🇷 / 🇪🇸\n📦 41.7 GB / 83.4 GB 📊 55.6 Mbps \n🏷️ FGT \n⚡Ready (TB) 🔍ElfCache ",
+      "name": "🔥4K UHD",
+      "url": "https://aio.example.com/play/redacted"
+    },
+    {
+      "behaviorHints": {
+        "bingeGroup": "com.aiostreams.viren070|2160p|BluRay REMUX",
+        "filename": "Toy Story 4 (2019) UHD BDRemux 4K 2160p HDR H.265 (HEVC) [UKR_ENG] [ViDeO_Hurtom].mkv",
+        "folderSize": 38310543788,
+        "videoHash": "51d2bfe69ce9e659",
+        "videoSize": 38310543788
+      },
+      "description": "🎬 Toy Story 4 (2019) \n🎥 BluRay REMUX 📺 HDR10 | HDR 🎞️ HEVC ⏱️ 1h:40m:5s \n🎧 DD | DTS | DTS-HD MA | TrueHD 🔊 5.1 | 7.1 🗣️ 🇺🇦 / 🇬🇧📝 🇬🇧\n📦 38.3 GB 📊 51 Mbps \n⚡Ready (TB) 🔍ElfCache ",
+      "name": "🔥4K UHD",
+      "url": "https://aio.example.com/play/redacted"
+    },
+    {
+      "behaviorHints": {
+        "bingeGroup": "com.aiostreams.viren070|2160p|BluRay REMUX|playBD",
+        "filename": "Toy.Story.4.2019.Hybrid.2160p.UHD.Remux.HEVC.DoVi.TrueHD.Atmos.7.1-playBD.mkv",
+        "folderSize": 73052858666,
+        "videoSize": 37498545377
+      },
+      "description": "🎬 Toy Story 4 (2019) \n🎥 BluRay REMUX 📺 DV 🎞️ HEVC \n🎧 Atmos | TrueHD 🔊 7.1 \n📦 37.5 GB / 73.1 GB 📊 50 Mbps \n🏷️ playBD \n⚡Ready (TB) 🔍ElfCache ",
+      "name": "🔥4K UHD",
+      "url": "https://aio.example.com/play/redacted"
+    },
+    {
+      "behaviorHints": {
+        "bingeGroup": "com.aiostreams.viren070|2160p|BluRay REMUX",
+        "filename": "Toy Story 4 (2019) UHD BDRemux 2160p HDR, Dolby Vision [Hybrid].mkv",
+        "folderSize": 74724113970,
+        "videoHash": "bcae77f80bfdf799",
+        "videoSize": 37362056985
+      },
+      "description": "🎬 Toy Story 4 (2019) \n🎥 BluRay REMUX 📺 DV | HDR10 | HDR 🎞️ HEVC ⏱️ 1h:40m:14s \n🎧 DTS-HD MA | DD | TrueHD 🔊 5.1 | 7.1 | 2.0 🗣️ 🇺🇦 / 🇬🇧📝 🇺🇦 / 🇬🇧\n📦 37.4 GB / 74.7 GB 📊 49.7 Mbps \n⚡Ready (TB) 🔍ElfCache ",
+      "name": "🔥4K UHD",
+      "url": "https://aio.example.com/play/redacted"
+    },
+    {
+      "behaviorHints": {
+        "bingeGroup": "com.aiostreams.viren070|2160p|BluRay REMUX|DVT",
+        "filename": "Toy.Story.4.2019.2160p.UHD.BDRemux.TrueHD.Atmos.7.1.HYBRID.DoVi-DVT.mkv",
+        "folderSize": 72363035924,
+        "videoHash": "39c0fea1e6eb1f77",
+        "videoSize": 36181517962
+      },
+      "description": "🎬 Toy Story 4 (2019) \n🎥 BluRay REMUX 📺 DV | HDR10 🎞️ HEVC ⏱️ 1h:40m:14s \n🎧 DD | DTS | TrueHD | Atmos 🔊 5.1 | 2.0 | 7.1 🗣️ 🇷🇺 / 🇺🇦 / 🇬🇧📝 🇷🇺 / 🇺🇦 / 🇬🇧\n📦 36.2 GB / 72.4 GB 📊 48.1 Mbps \n🏷️ DVT \n⚡Ready (TB) 🔍ElfCache ",
+      "name": "🔥4K UHD",
+      "url": "https://aio.example.com/play/redacted"
+    },
+    {
+      "behaviorHints": {
+        "bingeGroup": "com.aiostreams.viren070|2160p|BluRay REMUX|FraMeSToR",
+        "filename": "Toy.Story.4.2019.UHD.BluRay.2160p.TrueHD.Atmos.7.1.DV.HEVC.HYBRID.REMUX-FraMeSToR.mkv",
+        "folderSize": 71108626578,
+        "videoHash": "0354b7f31c5e3aa6",
+        "videoSize": 35554313289
+      },
+      "description": "🎬 Toy Story 4 (2019) \n🎥 BluRay REMUX 📺 DV | HDR10 🎞️ HEVC ⏱️ 1h:40m:3s \n🎧 TrueHD | DD | Atmos 🔊 7.1 | 5.1 | 2.0 🗣️ 🇬🇧📝 🇬🇧 / 🇨🇳 / 🇨🇿 / 🇩🇰 / 🇳🇱 / 🇫🇮 / 🇫🇷 / 🇩🇪 / 🇬🇷 / 🇮🇹 / 🇰🇷 / 🇳🇴 / 🇵🇱 / 🇧🇷 / 🇷🇺 / 🇪🇸 / 💃🏻 / 🇸🇪\n📦 35.6 GB / 71.1 GB 📊 47.4 Mbps \n🏷️ FraMeSToR \n⚡Ready (TB) 🔍ElfCache ",
+      "name": "🔥4K UHD",
+      "url": "https://aio.example.com/play/redacted"
+    }
+  ]
+}

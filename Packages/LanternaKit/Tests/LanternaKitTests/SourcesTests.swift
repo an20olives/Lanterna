@@ -141,3 +141,22 @@ struct SourcesTests {
         #expect(locator.url.host == "cdn.example.com")
     }
 }
+
+struct RecordedFixtureTests {
+    /// Recorded from a live AIOStreams (ElfHosted) config on 2026-10-04 with every URL replaced.
+    @Test func realStreamResponseParses() async throws {
+        let url = try #require(Bundle.module.url(forResource: "aiostreams-streams", withExtension: "json", subdirectory: "Fixtures"))
+        let body = try String(contentsOf: url, encoding: .utf8)
+        let transport = ScriptedTransport.routes([("/stream/movie/tt1979376.json", body)])
+        let client = try #require(AIOStreamsClient(manifestURL: SourcesTests.manifest, transport: transport))
+        let source = AIOStreamsSource(id: SourceID(), client: client)
+        let streams = try await source.streams(for: StreamRequest(title: .movie(tmdbID: 301528, imdbID: "tt1979376")))
+        #expect(streams.count == 6)
+        #expect(streams.allSatisfy { $0.claimed.resolution == .r2160 })
+        #expect(streams.contains { $0.claimed.hdr.contains(.dolbyVision) })
+        #expect(streams.contains { $0.claimed.hasAtmos })
+        #expect(streams.allSatisfy { $0.isCached == true })
+        #expect(Set(streams.map(\.id)).count == 6)
+        #expect(streams.allSatisfy { ($0.sizeBytes ?? 0) > 30_000_000_000 })
+    }
+}
