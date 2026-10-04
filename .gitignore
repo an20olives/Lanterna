@@ -22,3 +22,6 @@ xcuserdata/
 
 # P0 spike corpus (TorBox item IDs); never commit
 Spike/*.local.json
+
+# Local dev manifest link (embeds the AIOStreams config); never commit
+Config/Local.xcconfig

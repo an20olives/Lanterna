@@ -59,6 +59,9 @@ targets:
       - package: LanternaPlayer
       - package: LanternaPlayer
         product: PlayerCore
+    configFiles:
+      Debug: Config/Base.xcconfig
+      Release: Config/Base.xcconfig
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.lanterna.personal.tvos
@@ -66,6 +69,7 @@ targets:
       path: Apps/tvOS/Info.plist
       properties:
         CFBundleDisplayName: Lanterna
+        LanternaDevManifest: $(LANTERNA_DEV_MANIFEST)
         UILaunchScreen: {}
         UIBackgroundModes: [audio]
         NSLocalNetworkUsageDescription: Lanterna pairs with your iPhone and plays from servers on your home network.

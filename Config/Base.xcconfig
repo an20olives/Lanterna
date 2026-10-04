@@ -1,0 +1,2 @@
+// Optional, gitignored. Defines LANTERNA_DEV_MANIFEST (see Local.xcconfig.example).
+#include? "Local.xcconfig"

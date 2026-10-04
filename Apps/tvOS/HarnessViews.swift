@@ -33,7 +33,9 @@ struct SetupView: View {
             Text("Connect AIOStreams").font(.largeTitle.bold()).accessibilityIdentifier("setup.title")
             Text("Paste your AIOStreams manifest link. It stays in this Apple TV's Keychain.")
                 .foregroundStyle(.secondary)
-            SecureField("AIOStreams manifest link", text: $model.keyDraft)
+            TextField("AIOStreams manifest link", text: $model.keyDraft)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
                 .frame(maxWidth: 900)
             Button("Save") { Task { await model.saveManifest() } }
                 .disabled(model.busy)

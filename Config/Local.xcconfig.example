@@ -1,0 +1,2 @@
+// Copy to Config/Local.xcconfig (gitignored). xcconfig treats // as a comment, so leave off the https:// prefix.
+LANTERNA_DEV_MANIFEST = aiostreams.example.com/stremio/UUID/CONFIG/manifest.json

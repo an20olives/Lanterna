@@ -63,8 +63,17 @@ final class HarnessModel {
         started = true
         if ProcessInfo.processInfo.arguments.contains("-uitest-reset") { try? keychain.remove(.aiostreamsManifestURL) }
         runs = await store.runs
+        seedDevManifest()
         await startServer()
         if manifestURL() != nil { screen = .find }
+    }
+
+    /// Dev convenience: a build made with Config/Local.xcconfig carries the manifest link, so the first launch skips setup.
+    private func seedDevManifest() {
+        guard !ProcessInfo.processInfo.arguments.contains("-uitest-reset"), manifestURL() == nil,
+              let value = Bundle.main.object(forInfoDictionaryKey: "LanternaDevManifest") as? String,
+              value.hasSuffix("manifest.json") else { return }
+        try? keychain.set("https://" + value, for: .aiostreamsManifestURL)
     }
 
     private func startServer() async {
