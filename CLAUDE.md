@@ -33,7 +33,7 @@ Personal media hub for iPhone and Apple TV. One owner, sideloaded only. It will 
 **Engine A (primary): on-device remux to HLS, played in `AVPlayerViewController`.**
 - FFmpeg demuxes the remote file through a custom AVIO context doing HTTP range requests.
 - Video: stream copy (H.264, HEVC, Dolby Vision profiles 5 and 8.x). Never transcode video.
-- Audio: copy AAC, AC3, EAC3 (including Atmos JOC). Transcode DTS, DTS-HD, and TrueHD to EAC3 5.1.
+- Audio: copy AAC, AC3, EAC3 (including Atmos JOC). Transcode DTS, DTS-HD, and TrueHD to ALAC (lossless, all channels; FLAC and AAC 5.1 selectable). The shared FFmpeg build (KSPlayer's FFmpegKit 6.1.4) has no AC3/EAC3 encoder, and the Apple TV decodes every track to PCM before HDMI anyway. P0 confirms the target.
 - Subtitles: SRT and ASS to WebVTT renditions. PGS is not supported in A; selecting a PGS track reroutes to Engine C.
 - fMP4 segments generated on demand from Matroska Cues, served by a localhost HTTP server as a VOD playlist so duration and seeking are known up front.
 - Engine A must keep every native tvOS feature working: transport bar, info panel (chapters, audio, subtitles), Siri rewind, clickpad scrubbing with thumbnails, frame-rate and dynamic-range matching, Dolby Vision and Atmos passthrough, PiP, Now Playing.

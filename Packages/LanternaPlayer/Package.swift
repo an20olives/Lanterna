@@ -37,6 +37,7 @@ let package = Package(
             dependencies: ["PlayerCore", "EngineA", "EngineC"]
         ),
         .testTarget(name: "PlayerCoreTests", dependencies: ["PlayerCore"]),
+        .testTarget(name: "LanternaPlayerTests", dependencies: ["LanternaPlayer", "PlayerCore"], resources: [.copy("Fixtures")]),
         .testTarget(name: "EngineATests", dependencies: ["EngineA", "PlayerCore"], resources: [.copy("Fixtures")]),
     ]
 )
