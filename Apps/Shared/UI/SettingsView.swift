@@ -2,6 +2,17 @@ import CoreImage.CIFilterBuiltins
 import LanternaKit
 import SwiftUI
 
+extension View {
+    /// tvOS renders menu pickers as a cramped segmented bar; a row that opens a list reads better and never truncates.
+    @ViewBuilder func settingsPicker() -> some View {
+        #if os(tvOS)
+        self.pickerStyle(.navigationLink)
+        #else
+        self.pickerStyle(.menu)
+        #endif
+    }
+}
+
 struct SettingsView: View {
     @Environment(AppEnvironment.self) private var env
 
@@ -214,8 +225,9 @@ struct YourServicesView: View {
                 })) {
                     ForEach(regions, id: \.self) { Text(Locale.current.localizedString(forRegionCode: $0) ?? $0).tag($0) }
                 }
+                .settingsPicker()
+            } footer: {
                 Text("Pick the services you pay for. Lanterna marks titles that stream on them and opens the app. It cannot check your subscription.")
-                    .font(.caption).foregroundStyle(.secondary)
             }
             Section("Services") {
                 if env.tmdb == nil { Text("Add a TMDB token to load the service list.").foregroundStyle(.secondary) }
@@ -269,10 +281,12 @@ struct StreamsSettingsView: View {
                 Text("Size").tag(StreamPrefs.Sort.size)
                 Text("Ready first").tag(StreamPrefs.Sort.cachedFirst)
             }
+            .settingsPicker()
             Picker("Minimum resolution", selection: Binding(get: { env.config.streamPrefs.minResolution }, set: { v in env.updateConfig { $0.streamPrefs.minResolution = v } })) {
                 Text("Any").tag(Resolution?.none)
                 ForEach(Resolution.allCases, id: \.self) { Text($0.label).tag(Resolution?.some($0)) }
             }
+            .settingsPicker()
             Toggle("Require Dolby Vision", isOn: Binding(get: { env.config.streamPrefs.requireDolbyVision }, set: { v in env.updateConfig { $0.streamPrefs.requireDolbyVision = v } }))
             Toggle("Require Atmos", isOn: Binding(get: { env.config.streamPrefs.requireAtmos }, set: { v in env.updateConfig { $0.streamPrefs.requireAtmos = v } }))
             Section("Source order") {
@@ -309,16 +323,19 @@ struct PlayerSettingsView: View {
                 Text("FLAC (lossless)").tag("flac")
                 Text("AAC 5.1").tag("aac51")
             }
+            .settingsPicker()
             Toggle("Subtitles on by default", isOn: Binding(get: { env.config.playerPrefs.subtitlesEnabled }, set: { v in env.updateConfig { $0.playerPrefs.subtitlesEnabled = v } }))
             Toggle("Show forced subtitles", isOn: Binding(get: { env.config.playerPrefs.showForcedSubtitles }, set: { v in env.updateConfig { $0.playerPrefs.showForcedSubtitles = v } }))
             Picker("Next episode card", selection: Binding(get: { env.config.playerPrefs.nextEpisodeLeadSeconds }, set: { v in env.updateConfig { $0.playerPrefs.nextEpisodeLeadSeconds = v } })) {
                 ForEach([15, 30, 45, 60, 90], id: \.self) { Text("\($0) seconds before the end").tag($0) }
             }
+            .settingsPicker()
             Picker("Skip intro", selection: Binding(get: { env.config.playerPrefs.skipIntro }, set: { v in env.updateConfig { $0.playerPrefs.skipIntro = v } })) {
                 Text("Off").tag(PlayerPrefs.SkipIntro.off)
                 Text("Show button").tag(PlayerPrefs.SkipIntro.button)
                 Text("Skip automatically").tag(PlayerPrefs.SkipIntro.auto)
             }
+            .settingsPicker()
         }
         .navigationTitle("Video player")
     }
