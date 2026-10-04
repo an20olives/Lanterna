@@ -62,19 +62,34 @@ struct JellyfinItem: Decodable {
 
 /// Jellyfin REST client. Each device authenticates for its own token (Jellyfin binds tokens to DeviceId).
 public struct JellyfinClient: Sendable {
-    let baseURL: URL
+    let baseURLs: [URL]
+    private let selector = BaseSelector()
     let device: JellyfinDevice
     let token: String?
     let userID: String?
     let http: HTTPClient
 
     public init(baseURL: URL, device: JellyfinDevice, token: String?, userID: String?, http: HTTPClient = HTTPClient()) {
-        self.baseURL = baseURL
+        self.init(baseURLs: [baseURL], device: device, token: token, userID: userID, http: http)
+    }
+
+    /// Several addresses for the same server (home LAN first, then Tailscale). The first one that answers sticks.
+    public init(baseURLs: [URL], device: JellyfinDevice, token: String?, userID: String?, http: HTTPClient = HTTPClient()) {
+        precondition(!baseURLs.isEmpty)
+        self.baseURLs = baseURLs
         self.device = device
         self.token = token
         self.userID = userID
         self.http = http
     }
+
+    final class BaseSelector: @unchecked Sendable {
+        private let lock = NSLock()
+        private var value = 0
+        var index: Int { get { lock.lock(); defer { lock.unlock() }; return value } set { lock.lock(); value = newValue; lock.unlock() } }
+    }
+
+    public var activeBaseURL: URL { baseURLs[min(selector.index, baseURLs.count - 1)] }
 
     var authorizationValue: String {
         var parts = ["Client=\"Lanterna\"", "Device=\"\(device.deviceName)\"", "DeviceId=\"\(device.deviceID)\"", "Version=\"\(device.version)\""]
@@ -83,7 +98,7 @@ public struct JellyfinClient: Sendable {
     }
 
     func request(_ path: String, query: [String: String] = [:], method: String = "GET", json: [String: Any]? = nil) -> URLRequest {
-        var components = URLComponents(url: baseURL.appending(path: path), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: activeBaseURL.appending(path: path), resolvingAgainstBaseURL: false)!
         if !query.isEmpty { components.queryItems = query.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) } }
         var request = URLRequest(url: components.url!)
         request.httpMethod = method
@@ -96,9 +111,30 @@ public struct JellyfinClient: Sendable {
         return request
     }
 
+    /// Runs a request against the active address; on a network failure, tries the other addresses in order.
+    func call<T: Decodable>(_ path: String, query: [String: String] = [:], method: String = "GET", json: [String: Any]? = nil) async throws -> T {
+        try await attempt { try await http.json(request(path, query: query, method: method, json: json)) }
+    }
+
+    @discardableResult
+    func callRaw(_ path: String, query: [String: String] = [:], method: String = "GET", json: [String: Any]? = nil) async throws -> (Data, HTTPURLResponse) {
+        try await attempt { try await http.send(request(path, query: query, method: method, json: json)) }
+    }
+
+    private func attempt<R>(_ work: () async throws -> R) async throws -> R {
+        var lastError: Error = SourceError.unreachable("no address")
+        let start = selector.index
+        for offset in 0..<baseURLs.count {
+            selector.index = (start + offset) % baseURLs.count
+            do { return try await work() } catch SourceError.unreachable(let reason) { lastError = SourceError.unreachable(reason) }
+        }
+        selector.index = start
+        throw lastError
+    }
+
     public func publicInfo() async throws -> JellyfinPublicInfo {
         struct DTO: Decodable { let Id: String; let ServerName: String; let Version: String? }
-        let dto: DTO = try await http.json(request("/System/Info/Public"))
+        let dto: DTO = try await call("/System/Info/Public")
         return JellyfinPublicInfo(id: dto.Id, serverName: dto.ServerName, version: dto.Version)
     }
 
@@ -110,37 +146,52 @@ public struct JellyfinClient: Sendable {
     }
 
     public func authenticateByName(username: String, password: String) async throws -> JellyfinAuth {
-        let dto: AuthDTO = try await http.json(request("/Users/AuthenticateByName", method: "POST", json: ["Username": username, "Pw": password]))
+        let dto: AuthDTO = try await call("/Users/AuthenticateByName", method: "POST", json: ["Username": username, "Pw": password])
         return JellyfinAuth(accessToken: dto.AccessToken, userID: dto.User.Id, serverID: dto.ServerId)
     }
 
     public func quickConnectInitiate() async throws -> JellyfinQuickConnect {
         struct DTO: Decodable { let Code: String; let Secret: String }
-        let dto: DTO = try await http.json(request("/QuickConnect/Initiate", method: "POST"))
+        let dto: DTO = try await call("/QuickConnect/Initiate", method: "POST")
         return JellyfinQuickConnect(code: dto.Code, secret: dto.Secret)
     }
 
     public func quickConnectAuthenticated(secret: String) async throws -> Bool {
         struct DTO: Decodable { let Authenticated: Bool }
-        let dto: DTO = try await http.json(request("/QuickConnect/Connect", query: ["secret": secret]))
+        let dto: DTO = try await call("/QuickConnect/Connect", query: ["secret": secret])
         return dto.Authenticated
     }
 
     public func authenticateWithQuickConnect(secret: String) async throws -> JellyfinAuth {
-        let dto: AuthDTO = try await http.json(request("/Users/AuthenticateWithQuickConnect", method: "POST", json: ["Secret": secret]))
+        let dto: AuthDTO = try await call("/Users/AuthenticateWithQuickConnect", method: "POST", json: ["Secret": secret])
         return JellyfinAuth(accessToken: dto.AccessToken, userID: dto.User.Id, serverID: dto.ServerId)
     }
 
     /// Called from an already signed-in device to approve another device's Quick Connect code.
     public func quickConnectAuthorize(code: String) async throws {
-        _ = try await http.send(request("/QuickConnect/Authorize", query: ["code": code], method: "POST"))
+        _ = try await callRaw("/QuickConnect/Authorize", query: ["code": code], method: "POST")
+    }
+
+    /// Intro, recap and credits ranges (Jellyfin 10.10+ media segments). Older servers answer 404: no segments.
+    public func segments(itemID: String) async throws -> [MediaSegment] {
+        struct DTO: Decodable {
+            struct Item: Decodable { let `Type`: String; let StartTicks: Int64; let EndTicks: Int64 }
+            let Items: [Item]
+        }
+        let dto: DTO
+        do { dto = try await call("/MediaSegments/\(itemID)") } catch SourceError.notFound { return [] }
+        return dto.Items.compactMap { item in
+            guard let kind = MediaSegment.Kind(jellyfinType: item.`Type`) else { return nil }
+            return MediaSegment(kind: kind, start: Double(item.StartTicks) / 10_000_000, end: Double(item.EndTicks) / 10_000_000)
+        }
+        .sorted { $0.start < $1.start }
     }
 
     func items(_ query: [String: String]) async throws -> (items: [JellyfinItem], total: Int) {
         struct DTO: Decodable { let Items: [JellyfinItem]; let TotalRecordCount: Int? }
         var query = query
         if let userID { query["userId"] = userID }
-        let dto: DTO = try await http.json(request("/Items", query: query))
+        let dto: DTO = try await call("/Items", query: query)
         return (dto.Items, dto.TotalRecordCount ?? dto.Items.count)
     }
 
@@ -148,21 +199,21 @@ public struct JellyfinClient: Sendable {
         struct DTO: Decodable { let Items: [JellyfinItem] }
         var query = ["season": String(season), "Fields": "MediaSources,ProviderIds"]
         if let userID { query["userId"] = userID }
-        let dto: DTO = try await http.json(request("/Shows/\(seriesID)/Episodes", query: query))
+        let dto: DTO = try await call("/Shows/\(seriesID)/Episodes", query: query)
         return dto.Items
     }
 
     func report(path: String, itemID: String, mediaSourceID: String?, positionSeconds: Double, sessionID: String) async throws {
         var body: [String: Any] = ["ItemId": itemID, "PositionTicks": Int(positionSeconds * 10_000_000), "PlaySessionId": sessionID]
         if let mediaSourceID { body["MediaSourceId"] = mediaSourceID }
-        _ = try await http.send(request(path, method: "POST", json: body))
+        _ = try await callRaw(path, method: "POST", json: body)
     }
 
     func streamURL(itemID: String, mediaSourceID: String?) -> URL {
         var query = ["static": "true"]
         if let mediaSourceID { query["mediaSourceId"] = mediaSourceID }
         if let token { query["api_key"] = token }
-        var components = URLComponents(url: baseURL.appending(path: "/Videos/\(itemID)/stream"), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: activeBaseURL.appending(path: "/Videos/\(itemID)/stream"), resolvingAgainstBaseURL: false)!
         components.queryItems = query.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) }
         return components.url!
     }
@@ -288,5 +339,41 @@ public struct JellyfinSource: MediaSource {
         case .stop: path = "/Sessions/Playing/Stopped"
         }
         try await client.report(path: path, itemID: itemID, mediaSourceID: mediaSourceID, positionSeconds: report.positionSeconds, sessionID: report.sessionID)
+    }
+}
+
+public struct MediaSegment: Sendable, Equatable {
+    public enum Kind: String, Sendable { case intro, recap, outro
+        init?(jellyfinType: String) {
+            switch jellyfinType {
+            case "Intro": self = .intro
+            case "Recap": self = .recap
+            case "Outro": self = .outro
+            default: return nil
+            }
+        }
+    }
+    public var kind: Kind
+    public var start: Double
+    public var end: Double
+    public init(kind: Kind, start: Double, end: Double) {
+        self.kind = kind
+        self.start = start
+        self.end = end
+    }
+
+    public var skipLabel: String {
+        switch kind {
+        case .intro: "Skip Intro"
+        case .recap: "Skip Recap"
+        case .outro: "Skip Credits"
+        }
+    }
+}
+
+public enum SegmentTracker {
+    /// The segment to offer a skip for at `time`. The last half second is not worth a button.
+    public static func active(at time: Double, in segments: [MediaSegment]) -> MediaSegment? {
+        segments.first { time >= $0.start && time < $0.end - 0.5 }
     }
 }

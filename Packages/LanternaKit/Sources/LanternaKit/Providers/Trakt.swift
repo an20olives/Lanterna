@@ -192,6 +192,15 @@ public struct TraktClient: Sendable {
         }
     }
 
+    /// Items of a public or own list, e.g. `listItems(user: "me", slug: "best-of")`.
+    public func listItems(user: String, slug: String) async throws -> [TraktListItem] {
+        let entries: [EntryDTO] = try await http.json(request("/users/\(user)/lists/\(slug)/items"))
+        return entries.compactMap { entry in
+            guard let ref = entry.ref else { return nil }
+            return TraktListItem(ref: ref, title: entry.displayTitle, listedAt: TraktDates.parse(entry.listed_at) ?? .distantPast)
+        }
+    }
+
     public func history(since: Date? = nil, limit: Int = 100) async throws -> [TraktHistoryItem] {
         var query = ["limit": String(limit)]
         if let since { query["start_at"] = ISO8601DateFormatter().string(from: since) }

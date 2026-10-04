@@ -8,6 +8,16 @@ public enum TMDBImage {
     }
 }
 
+public struct PersonDetail: Sendable, Equatable {
+    public var id: Int
+    public var name: String
+    public var biography: String?
+    public var profilePath: String?
+    public var birthday: String?
+    public var birthplace: String?
+    public var credits: [TitleSummary]
+}
+
 public struct SearchResults: Sendable {
     public var titles: [TitleSummary]
     public var people: [CastMember]
@@ -59,6 +69,7 @@ public struct TMDBClient: Sendable {
         let overview: String?
         let vote_average: Double?
         let profile_path: String?
+        let popularity: Double?
     }
 
     struct GenreDTO: Decodable { let name: String }
@@ -225,6 +236,42 @@ public struct TMDBClient: Sendable {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "UTC")!
         return calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))
+    }
+
+    // MARK: People, genres, lists
+
+    public func person(id: Int) async throws -> PersonDetail {
+        struct DTO: Decodable {
+            struct Credits: Decodable { let cast: [ItemDTO] }
+            let id: Int; let name: String; let biography: String?; let profile_path: String?
+            let birthday: String?; let place_of_birth: String?; let combined_credits: Credits?
+        }
+        let dto: DTO = try await http.json(request("person/\(id)", ["append_to_response": "combined_credits"]))
+        var seen = Set<String>()
+        let credits = (dto.combined_credits?.cast ?? [])
+            .sorted { ($0.popularity ?? 0) > ($1.popularity ?? 0) }
+            .compactMap { Self.summary($0) }
+            .filter { seen.insert($0.id).inserted }
+        return PersonDetail(id: dto.id, name: dto.name, biography: (dto.biography ?? "").isEmpty ? nil : dto.biography,
+                            profilePath: dto.profile_path, birthday: dto.birthday, birthplace: dto.place_of_birth, credits: credits)
+    }
+
+    public struct Genre: Sendable, Hashable, Identifiable, Decodable {
+        public let id: Int
+        public let name: String
+    }
+
+    public func genres(kind: TitleRef.Kind) async throws -> [Genre] {
+        struct DTO: Decodable { let genres: [Genre] }
+        let dto: DTO = try await http.json(request("genre/\(kind == .movie ? "movie" : "tv")/list"))
+        return dto.genres
+    }
+
+    /// A public TMDB list by ID.
+    public func list(id: Int) async throws -> [TitleSummary] {
+        struct DTO: Decodable { let items: [ItemDTO] }
+        let dto: DTO = try await http.json(request("list/\(id)"))
+        return dto.items.compactMap { Self.summary($0) }
     }
 
     // MARK: Search, find, providers

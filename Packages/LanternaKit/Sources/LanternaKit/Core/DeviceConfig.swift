@@ -33,7 +33,44 @@ public struct SubscribedService: Codable, Sendable, Hashable, Identifiable {
     }
 }
 
+/// Filter-built shelf. Maps to TMDB discover parameters.
+public struct DiscoverFilters: Codable, Sendable, Hashable {
+    public var kind: TitleRef.Kind
+    public var genre: Int?
+    public var yearFrom: Int?
+    public var yearTo: Int?
+    public var minRating: Double?
+    public var language: String?
+    public var sort: String
+
+    public init(kind: TitleRef.Kind, genre: Int? = nil, yearFrom: Int? = nil, yearTo: Int? = nil, minRating: Double? = nil,
+                language: String? = nil, sort: String = "popularity.desc") {
+        self.kind = kind
+        self.genre = genre
+        self.yearFrom = yearFrom
+        self.yearTo = yearTo
+        self.minRating = minRating
+        self.language = language
+        self.sort = sort
+    }
+
+    public var parameters: [String: String] {
+        var params = ["sort_by": sort]
+        let dateKey = kind == .movie ? "primary_release_date" : "first_air_date"
+        if let genre { params["with_genres"] = String(genre) }
+        if let yearFrom { params["\(dateKey).gte"] = "\(yearFrom)-01-01" }
+        if let yearTo { params["\(dateKey).lte"] = "\(yearTo)-12-31" }
+        if let minRating {
+            params["vote_average.gte"] = String(minRating)
+            params["vote_count.gte"] = "200"   // a rating filter without a vote floor returns obscure one-vote titles
+        }
+        if let language { params["with_original_language"] = language }
+        return params
+    }
+}
+
 public enum ShelfQuery: Codable, Sendable, Hashable {
+    case discover(DiscoverFilters)
     case preset(String)
     case traktList(String)
     case tmdbList(Int)
@@ -76,7 +113,30 @@ public struct PlayerPrefs: Codable, Sendable, Hashable {
     public var nextEpisodeLeadSeconds = 30
     public var skipIntro: SkipIntro = .button
     public var audioTranscode = "alac"
+    public enum SubtitleColor: String, Codable, Sendable { case white, yellow }
+    /// 100 is the player's default size.
+    public var subtitleSizePercent = 100
+    public var subtitleColor: SubtitleColor = .white
+    public var subtitleBackground = false
+    /// Honoured by Engine C only; HLS text tracks cannot be shifted.
+    public var subtitleDelaySeconds = 0.0
     public init() {}
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = PlayerPrefs()
+        audioLanguages = try c.decodeIfPresent([String].self, forKey: .audioLanguages) ?? d.audioLanguages
+        subtitleLanguages = try c.decodeIfPresent([String].self, forKey: .subtitleLanguages) ?? d.subtitleLanguages
+        subtitlesEnabled = try c.decodeIfPresent(Bool.self, forKey: .subtitlesEnabled) ?? d.subtitlesEnabled
+        showForcedSubtitles = try c.decodeIfPresent(Bool.self, forKey: .showForcedSubtitles) ?? d.showForcedSubtitles
+        nextEpisodeLeadSeconds = try c.decodeIfPresent(Int.self, forKey: .nextEpisodeLeadSeconds) ?? d.nextEpisodeLeadSeconds
+        skipIntro = try c.decodeIfPresent(SkipIntro.self, forKey: .skipIntro) ?? d.skipIntro
+        audioTranscode = try c.decodeIfPresent(String.self, forKey: .audioTranscode) ?? d.audioTranscode
+        subtitleSizePercent = try c.decodeIfPresent(Int.self, forKey: .subtitleSizePercent) ?? d.subtitleSizePercent
+        subtitleColor = try c.decodeIfPresent(SubtitleColor.self, forKey: .subtitleColor) ?? d.subtitleColor
+        subtitleBackground = try c.decodeIfPresent(Bool.self, forKey: .subtitleBackground) ?? d.subtitleBackground
+        subtitleDelaySeconds = try c.decodeIfPresent(Double.self, forKey: .subtitleDelaySeconds) ?? d.subtitleDelaySeconds
+    }
 }
 
 /// Non-secret, durable settings. One versioned value in UserDefaults (budget 64 KB).
@@ -91,8 +151,21 @@ public struct DeviceConfig: Codable, Sendable, Hashable {
     public var shelves: [ShelfConfig] = []
     public var streamPrefs = StreamPrefs()
     public var playerPrefs = PlayerPrefs()
+    public var heroEnabled = true
 
     public init() {}
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        version = try c.decodeIfPresent(Int.self, forKey: .version) ?? Self.currentVersion
+        sources = try c.decodeIfPresent([SourceConfig].self, forKey: .sources) ?? []
+        subscribedServices = try c.decodeIfPresent([SubscribedService].self, forKey: .subscribedServices) ?? []
+        watchRegion = try c.decodeIfPresent(String.self, forKey: .watchRegion) ?? "US"
+        shelves = try c.decodeIfPresent([ShelfConfig].self, forKey: .shelves) ?? []
+        streamPrefs = try c.decodeIfPresent(StreamPrefs.self, forKey: .streamPrefs) ?? StreamPrefs()
+        playerPrefs = try c.decodeIfPresent(PlayerPrefs.self, forKey: .playerPrefs) ?? PlayerPrefs()
+        heroEnabled = try c.decodeIfPresent(Bool.self, forKey: .heroEnabled) ?? true
+    }
 
     public func validated() -> DeviceConfig {
         var copy = self
