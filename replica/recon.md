@@ -36,7 +36,7 @@ Open the app on the Apple TV, pick something from Home or Continue Watching, cho
 
 | | iPhone | Apple TV |
 | --- | --- | --- |
-| Navigation | Bottom tab bar: Home, Library, Settings, plus a separate round Search button (iOS 26 tab bar search role). Seen in screenshot | Top tab bar: Search, Home, Library, Settings (Profiles tab when used). Top nav is the default; sidebar optional (changelog 1.0 b157). Seen in screenshot |
+| Navigation | Bottom tab bar: Home, Library, Settings, plus a separate round Search button (tab bar search role; available from iOS 18). Seen in screenshot | Top tab bar: Search, Home, Library, Settings (Profiles tab when used). Top nav is the default; sidebar optional (changelog 1.0 b157). Seen in screenshot |
 | Editing | Shelves, lists, network shares, stream source order editable here | Cannot edit shelves, manage lists, or download. Can add servers, enter keys, set PINs (FAQ) |
 | Input | Touch, context menus on long-press, pinch to fill | Siri Remote; long-press on cards for menus; on-screen keyboard or iPhone keyboard |
 | Player chrome | Custom SwiftUI controls (screenshot): close, PiP, AirPlay, volume, ±10 s, music-ID, stats, info, speed, subtitles | Not shown publicly. Changelog references transport/timeline, info panel, Menu button behavior, Now Playing commands |
@@ -159,7 +159,7 @@ F08 Declare subscribed services (iPhone)
     edge: region change keeps selections under "Saved for Other Regions"
 
 F09 Add an AIOStreams source (Lanterna, iPhone)
-    S16 -> S26 -> paste manifest URL -> preview -> Save -> sent to Apple TV via F11
+    S16 -> S26 -> paste manifest URL -> preview -> Save -> sent to Apple TV via F10
     happy path clicks: 4
     edge: URL invalid, manifest unreachable, URL contains secrets (Keychain only, never logged)
 
@@ -308,7 +308,7 @@ Relationships: Title 1-n Season 1-n Episode; MediaSourceConfig 1-n ServerItemInd
 
 ## Feature matrix
 
-See `features.csv`. Must: 48, should: 32, could: 18, skip: 20 (118 rows).
+See `features.csv`. Must: 48, should: 31, could: 19, skip: 20 (118 rows).
 
 ## Out of scope (cannot or should not be cloned)
 

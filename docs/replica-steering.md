@@ -17,7 +17,7 @@ The replica skills assume web stacks by default (Next.js, Postgres, Playwright, 
 ## 3. /replica-design
 
 ```
-/replica-design Build tokens for SwiftUI, not CSS. Dark-first. Accent amber #E8A23C, also the focus ring. Include tvOS focus states (scale, shadow, parallax) for posters, buttons, and rows; iOS 26 Liquid Glass materials for chrome. Icon: layered tvOS parallax stack in three layers (ink-to-aubergine gradient background, soft amber light cone, aperture) plus an Icon Composer export for iOS. Run contrast.py on the tokens.
+/replica-design Build tokens for SwiftUI, not CSS. Dark-first. Accent amber #E8A23C, also the focus ring. Include tvOS focus states (scale, shadow, parallax) for posters, buttons, and rows; system materials for chrome (Liquid Glass is unavailable until the build Mac gets Xcode 26; the iOS 18.5 SDK has no glassEffect). Icon: layered tvOS parallax stack in three layers (ink-to-aubergine gradient background, soft amber light cone, aperture) plus a standard iOS app icon set (Icon Composer needs Xcode 26). Run contrast.py on the tokens.
 ```
 
 ## 4. /replica-build

@@ -9,7 +9,7 @@ Anything marked **(verify)** comes from training knowledge of a third-party API 
 
 | layer | choice | why |
 | --- | --- | --- |
-| language / UI | Swift 6 (strict concurrency), SwiftUI, iOS 26 and tvOS 26 | Fixed in CLAUDE.md |
+| language / UI | Swift 6 language mode on the Swift 6.1 toolchain (Xcode 16.4), SwiftUI, iOS 18.0 and tvOS 18.0 targets, iOS 18.5 and tvOS 18.5 SDKs | The build Mac cannot run Xcode 26 (see CLAUDE.md) |
 | project | XcodeGen, `project.yml` is source of truth | Fixed |
 | packages | `LanternaKit` (models, sources, networking, Keychain, SwiftData, Trakt sync), `LanternaPlayer` (router, Engine A, Engine C) | Fixed; apps stay thin |
 | persistence | SwiftData, on-device only, versioned schema from v1 | Fixed. On tvOS it is a cache (see "tvOS storage" below) |
@@ -662,7 +662,9 @@ Goal: fill `docs/p0-results.md` and confirm or change the engine strategy.
 - LanternaPlayer: `RemoteByteSource`, `AVIOBridge`, `StreamProber`, `RoutingPolicy` (with unit tests over hand-written `StreamProbe` fixtures), `PlaybackRouter`, Engine A (`SegmentPlanner`, `SegmentMuxer`, `AudioTranscoder`, `SubtitleConverter`, `LocalHLSServer`, `PlaylistWriter`, `EngineASession`), Engine A-direct, Engine C (KSPlayer wrapper with minimal transport, Now Playing, display criteria).
 - tvOS **spike harness** screen (Apps/tvOS, debug only): a list of the corpus, "Play in A", "Play in C", "Auto", and an on-screen results table. Measures TTFF, 10 scripted random seeks (median, p90), mode-switch observed (`AVDisplayManager`), memory peak, dropped-frame/stall events. Results also go to `os.Logger` (category `p0`) as one JSON line per run.
 - Corpus: `Spike/corpus.local.json` (gitignored) lists TorBox item and file IDs plus the profile label for each of the 10 streams (add an 11th: DV Profile 7, per recon). TorBox key entered once on the TV with the iPhone keyboard and stored in Keychain. Fresh links are requested at play time.
-- Run from Xcode directly to the paired Apple TV with the free Personal Team for fast iteration (debugger, Console, Instruments). Do one final `make ipa-tvos` → atvloadly install to confirm the signed IPA behaves the same.
+- How builds reach the TV depends on its installed tvOS. The build Mac runs Xcode 16.4, which can install and debug only on tvOS 18.x. If the Apple TV is on 18.x: run from Xcode directly with the free Personal Team (debugger, Console, Instruments), and do one final `make ipa-tvos` → atvloadly install to confirm the signed IPA behaves the same. If it is on tvOS 26: every iteration is `make ipa-tvos` → atvloadly, with no debugger, so the harness must report on its own (next bullet).
+- Results leave the TV without Xcode: while the harness screen is open it serves `GET /p0/results.json` on the LAN (random port shown on screen, bound only while visible, no secrets or URLs in the payload). Fetch it from the Mac with curl and paste into `docs/p0-results.md`.
+- Pick the newest KSPlayer release (and FFmpeg build) that compiles with Xcode 16.4 / Swift 6.1 and the tvOS 18.5 SDK. Recent releases may require Xcode 26; pin whatever builds here.
 - Manual on-TV checks per stream: DV/HDR mode on the TV, Atmos indicator on the receiver (expect PCM/MAT, not bitstream; see recon finding 4), subtitles, native features, A/V drift at 10 min.
 - Gate: per `docs/p0-player-spike.md`. Record the routing decision for each stream in `docs/p0-results.md`.
 
@@ -699,7 +701,7 @@ Should-haves by area (streams filters and source order, trailers, cast, Coming S
 
 ## Summary
 
-- Stack: Swift 6 / SwiftUI on iOS and tvOS 26, XcodeGen, LanternaKit + LanternaPlayer, SwiftData (cache-first on tvOS) + UserDefaults config + Keychain, KSPlayer and one shared FFmpeg build, Network.framework and CryptoKit for localhost HLS and pairing.
+- Stack: Swift 6 / SwiftUI on iOS and tvOS 18 (Xcode 16.4), XcodeGen, LanternaKit + LanternaPlayer, SwiftData (cache-first on tvOS) + UserDefaults config + Keychain, KSPlayer and one shared FFmpeg build, Network.framework and CryptoKit for localhost HLS and pairing.
 - SwiftData models: 12. External APIs: 5 services. Localhost HLS routes: 6. Pairing frames: 6.
 - Riskiest: (1) Engine A keeping Dolby Vision through fMP4 HLS on the real Apple TV, (2) Engine C's hand-built native-feeling transport, (3) tvOS local storage being purgeable with no iCloud fallback.
 - Next: M0, the P0 spike. `/replica-design` can run in parallel because it touches no player code, but `/replica-build` waits for the P0 gate.

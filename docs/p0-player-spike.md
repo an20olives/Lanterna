@@ -49,7 +49,7 @@ Run everything on the physical Apple TV. The simulator is not valid evidence for
 ## Candidate libraries (from training data; versions and licenses not yet verified)
 
 - KSPlayer: ships an FFmpeg-based engine (MEPlayer) with tvOS support. Candidate for Engine C and the shared FFmpeg build. Expected to be GPL, which is fine for personal use.
-- VLCKit (TVVLCKit): LGPL alternative for Engine C if KSPlayer fails on tvOS 26.
+- VLCKit (TVVLCKit): LGPL alternative for Engine C if KSPlayer fails on the tvOS 18.5 SDK.
 - FFmpegKit: archived upstream; do not adopt it.
 
 Record the results in `docs/p0-results.md`, one row per stream per engine, plus the routing decision.

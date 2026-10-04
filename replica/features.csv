@@ -106,7 +106,7 @@ tvOS focus: down from show artwork lands on current episode,tvos,should,yes,no,
 tvOS focus: cancel stream search restores focus,tvos,should,yes,no,
 tvOS top tab bar navigation,tvos,must,yes,no,
 iPhone tab bar with search role,ios,must,yes,no,
-Liquid Glass chrome,ios,should,yes,no,
+Liquid Glass chrome,ios,could,yes,no,Blocked until the build Mac has Xcode 26; use system materials meanwhile
 OLED true black mode,ios,could,yes,no,Dark-first anyway
 Plex Emby Silo servers,sources,skip,yes,skip,Not in source list
 WebDAV network shares,sources,skip,yes,skip,

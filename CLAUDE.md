@@ -15,7 +15,9 @@ Personal media hub for iPhone and Apple TV. One owner, sideloaded only. It will 
 
 ## Stack
 
-- Swift 6, SwiftUI. Targets: iOS and tvOS, deployment target 26.0 (lower it to match the Apple TV's installed tvOS if needed; the Apple TV is frozen on updates because atvloadly lags new releases).
+- Swift 6 language mode, SwiftUI. Targets: iOS and tvOS, deployment target 18.0 (lower it further only to match the Apple TV's installed tvOS; the Apple TV is frozen on updates because atvloadly lags new releases).
+- Build machine: a work Mac on macOS 15.5 with Xcode 16.4 (Swift 6.1, iOS 18.5 and tvOS 18.5 SDKs). It is authorized for these personal builds and cannot run Xcode 26, so every build happens here on the 18.5 SDKs. Do not use any iOS 26 or tvOS 26 API (Liquid Glass `glassEffect`, Icon Composer, new tvOS 26 AVKit API). Apps built on the 18.5 SDK still run on devices that have OS 26 installed.
+- Xcode 16.4 cannot install to or debug on a device running OS 26. On such a device, the only path is the unsigned IPA through AltStore or atvloadly, with logs read afterwards. Direct Xcode runs only work on a device running 18.x.
 - XcodeGen. `project.yml` is the source of truth. Never hand-edit anything inside `Lanterna.xcodeproj`. After changing `project.yml`, run `xcodegen generate`.
 - Local Swift packages:
   - `Packages/LanternaKit`: models, MediaSource adapters, networking, Keychain, SwiftData persistence, Trakt sync.
@@ -47,7 +49,7 @@ Engine A and C should share one FFmpeg build.
 The tvOS app is signed with a free, dedicated Apple ID by atvloadly on the Pi. The iOS app is sideloaded through AltStore.
 
 - 7-day profiles, refreshed automatically. Maximum 3 active sideloaded apps per Apple ID.
-- Do not use entitlements a free Personal Team cannot get: iCloud/CloudKit, Push Notifications, Associated Domains, Sign in with Apple. App Groups are unverified; do not depend on them until tested.
+- Do not use entitlements a free Personal Team cannot get: iCloud/CloudKit, Push Notifications, Associated Domains, Sign in with Apple. App Groups are unverified; do not depend on them until tested. iCloud is out because of signing, not by preference: a free Apple ID cannot provision an iCloud container, and re-signers (atvloadly, AltStore) rewrite the bundle ID, so container IDs would not match anyway. Revisit only if the signing path changes to a paid developer account that signs the exact bundle ID.
 - No app extensions in v1 (Top Shelf is deferred). Each extension consumes an App ID and complicates re-signing.
 - The signer rewrites the bundle ID. Never hardcode bundle ID, team ID, or a Keychain access group. Use the default Keychain access group.
 - Distribution artifact is an unsigned IPA: `make ipa-tvos` and `make ipa-ios`.
@@ -64,7 +66,7 @@ The tvOS app is signed with a free, dedicated Apple ID by atvloadly on the Pi. T
 ```
 xcodegen generate
 xcodebuild -scheme Lanterna-tvOS -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation)' build
-xcodebuild -scheme Lanterna-iOS -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
+xcodebuild -scheme Lanterna-iOS -destination 'platform=iOS Simulator,name=iPhone 16 Pro' build
 xcodebuild test -scheme Lanterna-tvOS -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation)'
 swift test --package-path Packages/LanternaKit
 make ipa-tvos

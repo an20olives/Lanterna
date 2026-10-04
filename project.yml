@@ -3,8 +3,8 @@ name: Lanterna
 options:
   bundleIdPrefix: com.lanterna.personal
   deploymentTarget:
-    iOS: "26.0"
-    tvOS: "26.0"
+    iOS: "18.0"
+    tvOS: "18.0"
   createIntermediateGroups: true
 
 packages:
