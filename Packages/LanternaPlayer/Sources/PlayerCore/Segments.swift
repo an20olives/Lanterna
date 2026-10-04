@@ -6,12 +6,23 @@ public struct Segment: Codable, Sendable, Equatable {
     public var start: Double
     public var end: Double
     public var duration: Double { end - start }
+
+    public init(index: Int, start: Double, end: Double) {
+        self.index = index
+        self.start = start
+        self.end = end
+    }
 }
 
 public struct SegmentPlan: Codable, Sendable, Equatable {
     public var segments: [Segment]
     /// HLS EXT-X-TARGETDURATION: the longest segment rounded up.
     public var targetDurationSeconds: Int
+
+    public init(segments: [Segment], targetDurationSeconds: Int) {
+        self.segments = segments
+        self.targetDurationSeconds = targetDurationSeconds
+    }
 
     /// Index of the segment that contains `time`, clamped to the plan.
     public func segmentIndex(containing time: Double) -> Int {

@@ -2,12 +2,12 @@ import Foundation
 
 extension Data {
     /// Big-endian reads relative to `startIndex`, so they work on slices.
-    func readUInt32(at offset: Int) -> UInt32 {
+    public func readUInt32(at offset: Int) -> UInt32 {
         let i = startIndex + offset
         return UInt32(self[i]) << 24 | UInt32(self[i + 1]) << 16 | UInt32(self[i + 2]) << 8 | UInt32(self[i + 3])
     }
 
-    func readUInt64(at offset: Int) -> UInt64 {
+    public func readUInt64(at offset: Int) -> UInt64 {
         UInt64(readUInt32(at: offset)) << 32 | UInt64(readUInt32(at: offset + 4))
     }
 
