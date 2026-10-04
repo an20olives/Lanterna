@@ -1,6 +1,7 @@
 #if canImport(UIKit)
 @preconcurrency import KSPlayer
 import PlayerCore
+import os
 import SwiftUI
 import UIKit
 
@@ -20,6 +21,7 @@ public final class EngineCSession: PlaybackSession {
     private var firstFrameReported = false
     private var lastState: KSPlayerState = .initialized
     private var stalls = 0
+    private var statePoller: Task<Void, Never>?
     private var stateWaiters: [(KSPlayerState) -> Bool] = []
 
     /// - Parameter subtitleTrack: container stream index to select once playing (PGS reroute from Engine A).
@@ -37,8 +39,17 @@ public final class EngineCSession: PlaybackSession {
         let view = KSVideoPlayerView(coordinator: coordinator, url: url, options: options, title: title)
         viewController = UIHostingController(rootView: view)
 
-        coordinator.onStateChanged = { [weak self] layer, state in
-            MainActor.assumeIsolated { self?.handle(state, layer: layer, subtitleTrack: subtitleTrack) }
+        // KSVideoPlayerView installs its own onStateChanged on the shared coordinator and would replace ours,
+        // so watch the layer's state directly.
+        statePoller = Task { @MainActor [weak self] in
+            var last = KSPlayerState.initialized
+            while !Task.isCancelled {
+                if let self, let layer = self.coordinator.playerLayer, layer.state != last {
+                    last = layer.state
+                    self.handle(last, layer: layer, subtitleTrack: subtitleTrack)
+                }
+                try? await Task.sleep(for: .milliseconds(25))
+            }
         }
         coordinator.onFinish = { [weak self] _, error in
             MainActor.assumeIsolated {
@@ -48,7 +59,10 @@ public final class EngineCSession: PlaybackSession {
         }
     }
 
+    private static let log = Logger(subsystem: "lanterna", category: "engineC")
+
     private func handle(_ state: KSPlayerState, layer: KSPlayerLayer, subtitleTrack: Int?) {
+        Self.log.info("state \(state.description, privacy: .public) t=\(Int(Date().timeIntervalSince(self.created) * 1000))ms")
         lastState = state
         switch state {
         case .bufferFinished:
@@ -85,35 +99,38 @@ public final class EngineCSession: PlaybackSession {
     public func play() { coordinator.playerLayer?.play() }
     public func pause() { coordinator.playerLayer?.pause() }
 
+    /// Latency from the call until playback has advanced past the target, so it reflects frames on screen
+    /// and not just KSPlayer reporting the seek as done.
     public func seek(to seconds: Double) async -> Int? {
         guard let layer = coordinator.playerLayer else { return nil }
         let started = Date()
-        return await withCheckedContinuation { (done: CheckedContinuation<Int?, Never>) in
+        let accepted = await withCheckedContinuation { (done: CheckedContinuation<Bool, Never>) in
             var finished = false
-            let finish: (Int?) -> Void = { value in
+            let finish: (Bool) -> Void = { value in
                 guard !finished else { return }
                 finished = true
                 done.resume(returning: value)
             }
-            layer.seek(time: seconds, autoPlay: true) { [weak self] ok in
-                MainActor.assumeIsolated {
-                    guard ok else { finish(nil); return }
-                    if self?.lastState == .bufferFinished { finish(Int(Date().timeIntervalSince(started) * 1000)); return }
-                    self?.stateWaiters.append { state in
-                        guard state == .bufferFinished else { return false }
-                        finish(Int(Date().timeIntervalSince(started) * 1000))
-                        return true
-                    }
-                }
+            layer.seek(time: seconds, autoPlay: true) { ok in
+                MainActor.assumeIsolated { finish(ok) }
             }
             Task { @MainActor in
                 try? await Task.sleep(for: .seconds(20))
-                finish(nil)
+                finish(false)
             }
         }
+        guard accepted else { return nil }
+        let deadline = started.addingTimeInterval(20)
+        while Date() < deadline {
+            let now = currentTime
+            if now >= seconds + 0.1, now < seconds + 10 { return Int(Date().timeIntervalSince(started) * 1000) }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        return nil
     }
 
     public func stop() {
+        statePoller?.cancel()
         coordinator.playerLayer?.stop()
         coordinator.resetPlayer()
         continuation.finish()
