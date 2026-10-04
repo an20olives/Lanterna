@@ -17,7 +17,7 @@ Personal media hub for iPhone and Apple TV. One owner, sideloaded only. It will 
 
 - Swift 6 language mode, SwiftUI. Targets: iOS and tvOS, deployment target 18.0 (lower it further only to match the Apple TV's installed tvOS; the Apple TV is frozen on updates because atvloadly lags new releases).
 - Build machine: a work Mac on macOS 15.5 with Xcode 16.4 (Swift 6.1, iOS 18.5 and tvOS 18.5 SDKs). It is authorized for these personal builds and cannot run Xcode 26, so every build happens here on the 18.5 SDKs. Do not use any iOS 26 or tvOS 26 API (Liquid Glass `glassEffect`, Icon Composer, new tvOS 26 AVKit API). Apps built on the 18.5 SDK still run on devices that have OS 26 installed.
-- Xcode 16.4 cannot install to or debug on a device running OS 26. On such a device, the only path is the unsigned IPA through AltStore or atvloadly, with logs read afterwards. Direct Xcode runs only work on a device running 18.x.
+- Xcode 16.4 cannot install to or debug on a device running OS 26. On such a device, the only path is the unsigned IPA through AltStore or atvloadly, with logs read afterwards. Direct Xcode runs only work on a device running 18.x. The Apple TV is on tvOS 26 and the iPhone on iOS 26, so both get builds only as IPAs (atvloadly on the Pi for tvOS, AltStore for iOS). A second, personal Mac with Xcode 26 is paired for reading device logs in Console.app; builds still come from the work Mac.
 - XcodeGen. `project.yml` is the source of truth. Never hand-edit anything inside `Lanterna.xcodeproj`. After changing `project.yml`, run `xcodegen generate`.
 - Local Swift packages:
   - `Packages/LanternaKit`: models, MediaSource adapters, networking, Keychain, SwiftData persistence, Trakt sync.
