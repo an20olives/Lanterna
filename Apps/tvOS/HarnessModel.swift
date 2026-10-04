@@ -67,6 +67,7 @@ final class HarnessModel {
         seedDevManifest()
         await startServer()
         if manifestURL() != nil { screen = .find }
+        await autorunIfRequested()
     }
 
     /// Dev convenience: a build made with Config/Local.xcconfig carries the manifest link, so the first launch skips setup.
@@ -75,6 +76,31 @@ final class HarnessModel {
               let value = Bundle.main.object(forInfoDictionaryKey: "LanternaDevManifest") as? String,
               value.hasSuffix("manifest.json") else { return }
         try? keychain.set("https://" + value, for: .aiostreamsManifestURL)
+    }
+
+    /// Headless driving for simulator runs: `-autorun-url <link> -autorun-mode auto|a|c|seek-auto|seek-a|seek-c [-autorun-seconds 20]`.
+    private func autorunIfRequested() async {
+        let args = ProcessInfo.processInfo.arguments
+        func value(_ name: String) -> String? {
+            args.firstIndex(of: name).flatMap { $0 + 1 < args.count ? args[$0 + 1] : nil }
+        }
+        guard let link = value("-autorun-url") else { return }
+        testURL = link
+        selectTestURL()
+        while case .loading = preview { try? await Task.sleep(for: .milliseconds(250)) }
+        switch value("-autorun-mode") ?? "auto" {
+        case "a": play(.engineA)
+        case "c": play(.engineC)
+        case "seek-auto": seekEngine = .auto; play(.seekTest)
+        case "seek-a": seekEngine = .engineA; play(.seekTest)
+        case "seek-c": seekEngine = .engineC; play(.seekTest)
+        default: play(.auto)
+        }
+        // Plain plays have no end of their own; seek tests close themselves.
+        if !(value("-autorun-mode") ?? "").hasPrefix("seek") {
+            try? await Task.sleep(for: .seconds(Double(value("-autorun-seconds") ?? "") ?? 20))
+            coordinator?.requestClose()
+        }
     }
 
     private func startServer() async {
