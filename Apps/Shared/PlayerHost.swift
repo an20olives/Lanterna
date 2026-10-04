@@ -14,6 +14,12 @@ struct PlayerHost: UIViewControllerRepresentable {
 final class PlayerContainer: UIViewController {
     private var child: UIViewController?
 
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        // Letterbox bars must be black, never the screen behind the cover.
+        view.backgroundColor = .black
+    }
+
     func show(_ next: UIViewController) {
         guard next !== child else { return }
         if let child {

@@ -57,8 +57,11 @@ final class AppEnvironment {
             for key in [KeychainKey.aiostreamsManifestURL, .tmdbReadToken, .torboxAPIKey, .traktClientID, .traktClientSecret, .traktAccessToken, .traktRefreshToken] {
                 try? keychain.remove(key)
             }
-            configStore.save(DeviceConfig())
-            config = DeviceConfig()
+            // Reset runs start without the featured strip so remote navigation is fixed; `-uitest-hero` turns it back on.
+            var fresh = DeviceConfig()
+            fresh.heroEnabled = ProcessInfo.processInfo.arguments.contains("-uitest-hero")
+            configStore.save(fresh)
+            config = fresh
             return
         }
         func seed(_ plistKey: String, _ key: KeychainKey, prefix: String = "") {
@@ -68,6 +71,7 @@ final class AppEnvironment {
         }
         seed("LanternaDevManifest", .aiostreamsManifestURL, prefix: "https://")
         seed("LanternaDevTMDB", .tmdbReadToken)
+        seed("LanternaDevTorBox", .torboxAPIKey)
         seed("LanternaDevTraktID", .traktClientID)
         seed("LanternaDevTraktSecret", .traktClientSecret)
     }
@@ -120,7 +124,8 @@ final class AppEnvironment {
                   let token = (try? keychain.string(account: "jellyfin.\(config.id.uuidString).token")) ?? nil else { continue }
             let device = JellyfinDevice(deviceID: jellyfinDeviceID(), deviceName: deviceName, version: "0.1")
             sources.append(JellyfinSource(id: SourceID(config.id), displayName: config.name,
-                                          client: JellyfinClient(baseURL: server, device: device, token: token, userID: config.userID)))
+                                          client: JellyfinClient(baseURLs: [server] + (config.remoteURL.flatMap(URL.init(string:)).map { [$0] } ?? []),
+                                                                 device: device, token: token, userID: config.userID)))
         }
         let registry = registry
         Task { await registry.setSources(sources) }

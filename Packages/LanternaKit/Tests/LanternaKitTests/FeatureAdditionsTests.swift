@@ -179,3 +179,53 @@ struct SubtitlePrefsTests {
         #expect(prefs.subtitleSizePercent == 100)
     }
 }
+
+struct SettingsSearchTests {
+    @Test func matchesAllWordsAnywhereInTitleSectionOrKeywords() {
+        let entry = SettingsSearch.Entry(title: "Video player", section: "Playback", keywords: ["subtitle size", "dts", "skip intro"])
+        #expect(SettingsSearch.matches("subtitle", entry))
+        #expect(SettingsSearch.matches("skip intro", entry))
+        #expect(SettingsSearch.matches("PLAYER dts", entry))
+        #expect(SettingsSearch.matches("playback", entry))
+        #expect(!SettingsSearch.matches("jellyfin", entry))
+        #expect(SettingsSearch.matches("   ", entry), "empty query matches everything")
+    }
+
+    @Test func filterKeepsOrderAndDropsMisses() {
+        let entries = [
+            SettingsSearch.Entry(title: "Streams", section: "Playback", keywords: ["sort"]),
+            SettingsSearch.Entry(title: "Trakt", section: "Account", keywords: ["sync"]),
+            SettingsSearch.Entry(title: "Sources", section: "Sources", keywords: ["sort order of sources"]),
+        ]
+        #expect(SettingsSearch.filter("sort", entries).map(\.title) == ["Streams", "Sources"])
+        #expect(SettingsSearch.filter("zzz", entries).isEmpty)
+    }
+}
+
+struct TorBoxAccountTests {
+    @Test func accountStatusReportsPlanAndExpiry() async throws {
+        let body = #"{"success":true,"data":{"id":42,"email":"someone@example.com","plan":2,"premium_expires_at":"2026-12-01T00:00:00Z","is_subscribed":true}}"#
+        let transport = ScriptedTransport.routes([("/user/me", body)])
+        let status = try await TorBoxClient(apiKey: "KEY", transport: transport).account()
+        #expect(status.isPremium)
+        #expect(status.planName == "Pro")
+        #expect(status.premiumExpires == ISO8601DateFormatter().date(from: "2026-12-01T00:00:00Z"))
+        #expect(!(status.summary(now: ISO8601DateFormatter().date(from: "2026-11-01T00:00:00Z")!)).contains("someone@example.com"), "never show the email")
+    }
+
+    @Test func freeOrExpiredAccountsAreNotPremium() async throws {
+        let body = #"{"success":true,"data":{"id":1,"plan":0,"premium_expires_at":null,"is_subscribed":false}}"#
+        let transport = ScriptedTransport.routes([("/user/me", body)])
+        let status = try await TorBoxClient(apiKey: "KEY", transport: transport).account()
+        #expect(!status.isPremium)
+        #expect(status.summary().contains("Free"))
+        let expired = TorBoxAccountStatus(plan: 1, premiumExpires: Date(timeIntervalSince1970: 100), isSubscribed: false)
+        #expect(!expired.isPremium(now: Date(timeIntervalSince1970: 200)))
+        #expect(expired.summary(now: Date(timeIntervalSince1970: 200)).contains("expired"))
+    }
+
+    @Test func badKeyIsReportedAsNeedingCredentials() async {
+        let transport = ScriptedTransport { _ in .init(status: 403, body: #"{"success":false,"error":"BAD_TOKEN","detail":"bad"}"#) }
+        await #expect(throws: (any Error).self) { _ = try await TorBoxClient(apiKey: "BAD", transport: transport).account() }
+    }
+}

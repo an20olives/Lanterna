@@ -23,6 +23,7 @@ public struct PreparedPlayback: @unchecked Sendable {
     /// The original stream URL, kept in memory for rerouting to C. Never logged.
     public var sourceURL: URL
     public var remux: RemuxSession?
+    public var externalSubtitles: [ExternalSubtitle] = []
     public var probe: StreamProbe? { record.probe }
 }
 
@@ -39,7 +40,7 @@ public final class PlaybackRouter: Sendable {
         HardwareCapabilities(av1HardwareDecode: VTIsHardwareDecodeSupported(0x6176_3031)) // 'av01'
     }
 
-    public func prepare(url: URL, context: RoutingContext) async throws -> PreparedPlayback {
+    public func prepare(url: URL, context: RoutingContext, externalSubtitles: [ExternalSubtitle] = []) async throws -> PreparedPlayback {
         let started = Date()
         var source: RemoteByteSource?
         var result: ProbeResult?
@@ -57,7 +58,7 @@ public final class PlaybackRouter: Sendable {
         var remux: RemuxSession?
         if decision.engine == .aRemux, let source, let result {
             do {
-                let session = try RemuxSession(source: source, probe: result, decision: decision)
+                let session = try RemuxSession(source: source, probe: result, decision: decision, externalSubtitles: externalSubtitles)
                 playbackURL = try await session.start()
                 remux = session
             } catch {
@@ -75,6 +76,6 @@ public final class PlaybackRouter: Sendable {
         let reasons = decision.reasons.map(\.rawValue).joined(separator: ",")
         Self.log.info("route engine=\(decision.engine.rawValue, privacy: .public) reasons=\(reasons, privacy: .public) probe=\(record.probeSummary ?? "none", privacy: .public) prepare_ms=\(record.prepareMillis)")
         if let failure { Self.log.error("route failure: \(failure, privacy: .public)") }
-        return PreparedPlayback(decision: decision, record: record, playbackURL: playbackURL, sourceURL: url, remux: remux)
+        return PreparedPlayback(decision: decision, record: record, playbackURL: playbackURL, sourceURL: url, remux: remux, externalSubtitles: externalSubtitles)
     }
 }

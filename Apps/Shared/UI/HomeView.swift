@@ -14,6 +14,8 @@ struct HomeShelf: Identifiable, Hashable {
     var id: String
     var title: String
     var items: [TitleSummary]
+    /// Set for TMDB preset shelves so See All can page the same catalog.
+    var seeAllCatalog: String?
 }
 
 @MainActor
@@ -45,36 +47,54 @@ final class HomeModel {
         continueItems = items
     }
 
+    var heroItems: [TitleSummary] = []
+
     func loadShelves(env: AppEnvironment) async {
-        guard env.tmdb != nil else {
+        guard env.tmdb != nil, let tmdb = env.tmdb, let source = await env.registry.sources(of: .tmdb).first else {
             shelves = DemoData.shelves().map { HomeShelf(id: $0.title, title: $0.title, items: $0.items) }
+            heroItems = Array((shelves.first?.items ?? []).prefix(5))
             return
         }
-        let sources = await env.registry.sources(of: .tmdb)
-        guard let tmdb = sources.first else { return }
-        let descriptors: [CatalogDescriptor]
-        if env.config.shelves.isEmpty {
-            descriptors = ((try? await tmdb.catalogs()) ?? []).filter { ["trending-movie", "trending-show", "popular-movie", "popular-show", "top_rated-movie"].contains($0.id) }
-        } else {
-            let all = (try? await tmdb.catalogs()) ?? []
-            descriptors = env.config.shelves.filter { !$0.isHidden }.compactMap { shelf in
-                if case .preset(let id) = shelf.query { return all.first { $0.id == id } }
-                return nil
-            }
-        }
-        var result: [HomeShelf] = []
+        let catalogs = (try? await source.catalogs()) ?? []
+        let configs = env.effectiveShelves.filter { !$0.isHidden }
+        var loaded: [(Int, HomeShelf)] = []
         await withTaskGroup(of: (Int, HomeShelf?).self) { group in
-            for (index, descriptor) in descriptors.enumerated() {
-                group.addTask {
-                    guard let page = try? await tmdb.catalogPage(descriptor, cursor: nil), !page.items.isEmpty else { return (index, nil) }
-                    return (index, HomeShelf(id: descriptor.id, title: descriptor.title, items: page.items))
+            for (index, shelf) in configs.enumerated() {
+                switch shelf.query {
+                case .preset(let id):
+                    guard let descriptor = catalogs.first(where: { $0.id == id }) else { continue }
+                    group.addTask {
+                        guard let page = try? await source.catalogPage(descriptor, cursor: nil), !page.items.isEmpty else { return (index, nil) }
+                        return (index, HomeShelf(id: shelf.id.uuidString, title: shelf.title, items: page.items, seeAllCatalog: id))
+                    }
+                case .discover(let filters):
+                    group.addTask {
+                        guard let page = try? await tmdb.discover(kind: filters.kind, filters: filters.parameters), !page.items.isEmpty else { return (index, nil) }
+                        return (index, HomeShelf(id: shelf.id.uuidString, title: shelf.title, items: page.items))
+                    }
+                case .tmdbList(let id):
+                    group.addTask {
+                        guard let items = try? await tmdb.list(id: id), !items.isEmpty else { return (index, nil) }
+                        return (index, HomeShelf(id: shelf.id.uuidString, title: shelf.title, items: items))
+                    }
+                default:
+                    continue
                 }
             }
-            var ordered: [(Int, HomeShelf)] = []
-            for await (index, shelf) in group { if let shelf { ordered.append((index, shelf)) } }
-            result = ordered.sorted { $0.0 < $1.0 }.map(\.1)
+            for await (index, shelf) in group { if let shelf { loaded.append((index, shelf)) } }
         }
-        shelves = result
+        // Trakt lists need the signed-in client, which lives on the main actor.
+        for (index, shelf) in configs.enumerated() {
+            guard case .traktList(let path) = shelf.query else { continue }
+            let parts = path.split(separator: "/").map(String.init)
+            guard parts.count == 2, let client = env.traktClient(authorized: env.secret(.traktAccessToken) != nil),
+                  let entries = try? await client.listItems(user: parts[0], slug: parts[1]) else { continue }
+            var items: [TitleSummary] = []
+            for entry in entries.prefix(24) { if let summary = await env.summary(forKey: entry.ref.key) { items.append(summary) } }
+            if !items.isEmpty { loaded.append((index, HomeShelf(id: shelf.id.uuidString, title: shelf.title, items: items))) }
+        }
+        shelves = loaded.sorted { $0.0 < $1.0 }.map(\.1)
+        heroItems = Array((shelves.first?.items ?? []).filter { $0.backdropPath != nil }.prefix(6))
     }
 }
 
@@ -100,7 +120,7 @@ struct HomeView: View {
                     content
                 }
             }
-            .navigationDestination(for: TitleSummary.self) { DetailView(summary: $0) }
+            .lanternaDestinations()
             .navigationDestination(item: $seeAll) { SeeAllView(shelf: $0) }
         }
         .task(id: env.revision) { await model.load(env: env) }
@@ -134,9 +154,14 @@ struct HomeView: View {
                     }
                     .padding(.horizontal, Metrics.gutter)
                 }
+                if env.config.heroEnabled, !model.heroItems.isEmpty {
+                    HeroCarousel(items: model.heroItems, onDetails: { path.append($0) }, onPlay: { item in
+                        Task { await flow.start(ref: item.ref, displayTitle: item.title, forcePicker: false, env: env) }
+                    })
+                }
                 if !model.continueItems.isEmpty { continueRow }
                 ForEach(model.shelves) { shelf in
-                    ShelfRow(title: shelf.title, items: shelf.items, onSelect: { path.append($0) }, onSeeAll: env.isDemo ? nil : { seeAll = shelf })
+                    ShelfRow(title: shelf.title, items: shelf.items, onSelect: { path.append($0) }, onSeeAll: shelf.seeAllCatalog == nil ? nil : { seeAll = shelf })
                 }
                 if model.isLoading { ProgressView().frame(maxWidth: .infinity) }
             }

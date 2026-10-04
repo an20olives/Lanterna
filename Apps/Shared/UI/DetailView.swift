@@ -1,5 +1,6 @@
 import LanternaKit
 import SwiftUI
+import UIKit
 
 @MainActor
 @Observable
@@ -69,6 +70,7 @@ struct DetailView: View {
     @Environment(PlayFlow.self) private var flow
     let summary: TitleSummary
     @State private var model = DetailModel()
+    @State private var trailerMessage: String?
 
     private var ref: TitleRef { summary.ref }
 
@@ -81,6 +83,7 @@ struct DetailView: View {
                     actions
                     if ref.kind == .show { episodesSection }
                     if !model.offers.isEmpty { providersRow }
+                    if let trailers = model.detail?.trailers, !trailers.isEmpty { trailersRow(trailers) }
                     if let cast = model.detail?.cast, !cast.isEmpty { castRow(cast) }
                 }
                 .padding(.horizontal, Metrics.gutter)
@@ -245,16 +248,58 @@ struct DetailView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: Metrics.rowSpacing) {
                     ForEach(cast.prefix(12)) { member in
-                        VStack {
-                            RemoteImage(url: TMDBImage.url(member.profilePath, .profile), placeholder: member.name)
-                                .frame(width: 110, height: 110).clipShape(Circle())
-                            Text(member.name).font(.caption).lineLimit(1)
-                            Text(member.character ?? "").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                        NavigationLink(value: PersonRoute(id: member.id, name: member.name, profilePath: member.profilePath)) {
+                            VStack {
+                                RemoteImage(url: TMDBImage.url(member.profilePath, .profile), placeholder: member.name)
+                                    .frame(width: 110, height: 110).clipShape(Circle())
+                                Text(member.name).font(.caption).lineLimit(1)
+                                Text(member.character ?? "").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                            }
+                            .frame(width: 130)
                         }
-                        .frame(width: 130)
+                        .cardButtonStyle()
                     }
                 }
             }
+        }
+    }
+
+    private func trailersRow(_ trailers: [Trailer]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Trailers").font(.title3.bold())
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: Metrics.rowSpacing) {
+                    ForEach(trailers.prefix(6)) { trailer in
+                        Button { openTrailer(trailer) } label: {
+                            VStack(alignment: .leading, spacing: 8) {
+                                RemoteImage(url: URL(string: "https://img.youtube.com/vi/\(trailer.youtubeKey)/hqdefault.jpg"), placeholder: trailer.name)
+                                    .frame(width: Metrics.still.width, height: Metrics.still.height)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                                    .overlay(Image(systemName: "play.circle.fill").font(.largeTitle).foregroundStyle(.white.opacity(0.9)))
+                                Text(trailer.name).font(.caption).lineLimit(1).frame(width: Metrics.still.width, alignment: .leading)
+                            }
+                        }
+                        .cardButtonStyle()
+                    }
+                }
+                .padding(.vertical, Metrics.rowPadding)
+            }
+            .focusSectionIfTV()
+            if let trailerMessage { Text(trailerMessage).font(.callout).foregroundStyle(.orange) }
+        }
+    }
+
+    /// Trailers live on YouTube. tvOS has no browser, so it hands off to the YouTube app when it is installed.
+    private func openTrailer(_ trailer: Trailer) {
+        let app = URL(string: "youtube://www.youtube.com/watch?v=\(trailer.youtubeKey)")!
+        let web = URL(string: "https://www.youtube.com/watch?v=\(trailer.youtubeKey)")!
+        Task {
+            if await UIApplication.shared.open(app) { trailerMessage = nil; return }
+            #if os(tvOS)
+            trailerMessage = "Install the YouTube app on this Apple TV to watch trailers."
+            #else
+            if !(await UIApplication.shared.open(web)) { trailerMessage = "Could not open the trailer." }
+            #endif
         }
     }
 }

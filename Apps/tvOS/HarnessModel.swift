@@ -179,7 +179,9 @@ final class HarnessModel {
             streams = .failed("That is not a web link.")
             return
         }
-        let name = url.lastPathComponent.isEmpty ? "Test URL" : url.lastPathComponent
+        var name = url.lastPathComponent.isEmpty ? "Test URL" : url.lastPathComponent
+        // Debrid links are often escaped twice; show the readable name.
+        for _ in 0..<2 { name = name.removingPercentEncoding ?? name }
         select(StremioStream(name: "Test URL", description: nil, url: url, filename: name, videoSize: nil))
     }
 

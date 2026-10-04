@@ -9,7 +9,7 @@ final class Harness: @unchecked Sendable {
     let server = FixtureServer()
     var session: RemuxSession?
 
-    func start(_ name: String, target: AudioTranscodeTarget = .alac) async throws -> URL {
+    func start(_ name: String, target: AudioTranscodeTarget = .alac, externalSubtitles: [ExternalSubtitle] = []) async throws -> URL {
         let url = try await server.start(name)
         let source = try await RemoteByteSource.open(url)
         let result = try await FFmpegProber.probe(source)
@@ -18,7 +18,7 @@ final class Harness: @unchecked Sendable {
                                            subtitlesEnabled: false, showForcedSubtitles: true),
             hardware: HardwareCapabilities(av1HardwareDecode: false), transcodeTarget: target, forcedEngine: .aRemux)
         let decision = DefaultRoutingPolicy().decide(result.probe, context: context)
-        let session = try RemuxSession(source: source, probe: result, decision: decision)
+        let session = try RemuxSession(source: source, probe: result, decision: decision, externalSubtitles: externalSubtitles)
         self.session = session
         return try await session.start()
     }
@@ -155,6 +155,26 @@ struct RemuxSessionTests {
         #expect(second.contains("Second cue &amp; more"))
     }
 
+    @Test func externalSubtitlesJoinTheMasterPlaylistAndAreServedPerSegment() async throws {
+        let harness = Harness()
+        defer { harness.stop() }
+        let cues = [WebVTTCue(start: 1, end: 3, text: "External one"), WebVTTCue(start: 7, end: 9, text: "External two")]
+        let external = ExternalSubtitle(id: "ext-1", language: "spa", label: "Spanish (download)", cues: cues, sourceURL: nil)
+        let master = try await harness.start("hevc10-ac3-srt.mkv", externalSubtitles: [external])
+        let text = String(decoding: try await get(master), as: UTF8.self)
+        #expect(text.contains("TYPE=SUBTITLES"))
+        #expect(text.contains("NAME=\"Spanish (download)\""))
+        #expect(text.contains("LANGUAGE=\"spa\""))
+        let playlist = String(decoding: try await get(relative(master, "s/1000/index.m3u8")), as: UTF8.self)
+        #expect(playlist.contains("#EXT-X-ENDLIST"))
+        #expect(playlist.contains("0.vtt"))
+        let first = String(decoding: try await get(relative(master, "s/1000/0.vtt")), as: UTF8.self)
+        #expect(first.hasPrefix("WEBVTT"))
+        #expect(first.contains("External one"))
+        let allText = try await (0..<segmentCount(playlist, ext: "vtt")).asyncMap { String(decoding: try await get(relative(master, "s/1000/\($0).vtt")), as: UTF8.self) }.joined()
+        #expect(allText.contains("External two"))
+    }
+
     @Test func assBecomesWebVTT() async throws {
         let harness = Harness()
         defer { harness.stop() }
@@ -219,5 +239,13 @@ struct DolbyVisionInitTests {
         #expect(!initSegment.contains(fourCC: "dvcC"))
         #expect(!initSegment.contains(fourCC: "dvvC"))
         #expect(initSegment.contains(fourCC: "hvc1"))
+    }
+}
+
+extension Sequence {
+    func asyncMap<T>(_ transform: (Element) async throws -> T) async rethrows -> [T] {
+        var result: [T] = []
+        for element in self { result.append(try await transform(element)) }
+        return result
     }
 }

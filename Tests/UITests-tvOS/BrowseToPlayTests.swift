@@ -30,6 +30,7 @@ final class BrowseToPlayTests: XCTestCase {
         sleep(8)
         remote.press(.menu)
 
+        sleep(3)
         // Menu leaves the player; depending on the stack it lands on detail or Home.
         let resume = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'continue.'")).firstMatch
         if !resume.waitForExistence(timeout: 8) {

@@ -15,36 +15,101 @@ extension View {
 
 struct SettingsView: View {
     @Environment(AppEnvironment.self) private var env
+    @State private var query = ""
+
+    /// Where each setting lives, for search. A finer entry opens the page that holds it.
+    private enum Page: String { case sources, services, pairing, streams, player, home, trakt, diagnostics, lab }
+
+    private struct Item: Identifiable {
+        var entry: SettingsSearch.Entry
+        var page: Page
+        var id: String { entry.title + entry.section }
+    }
+
+    private var items: [Item] {
+        func i(_ title: String, _ section: String, _ page: Page, _ keywords: [String]) -> Item {
+            Item(entry: .init(title: title, section: section, keywords: keywords), page: page)
+        }
+        var all = [
+            i("Sources and keys", "Sources", .sources, ["aiostreams manifest link", "tmdb token", "torbox key", "jellyfin server", "credentials", "api"]),
+            i("AIOStreams manifest link", "Sources", .sources, ["streams addon"]),
+            i("TMDB token", "Sources", .sources, ["artwork titles"]),
+            i("TorBox key", "Sources", .sources, ["debrid library"]),
+            i("Jellyfin server", "Sources", .sources, ["media server quick connect remote address"]),
+            i("Your Services", "Sources", .services, ["subscriptions", "region", "netflix", "disney", "open in app", "watch providers"]),
+            i("Region", "Sources", .services, ["country watch region"]),
+            i("Pair \(env.deviceName == "iPhone" ? "Apple TV" : "iPhone")", "Sources", .pairing, ["qr code", "scan", "send credentials", "setup without typing"]),
+            i("Streams", "Playback", .streams, ["sort", "minimum resolution", "dolby vision", "atmos", "size", "source order", "auto-select", "prefer library"]),
+            i("Video player", "Playback", .player, ["audio dts truehd", "subtitles", "forced", "next episode", "skip intro"]),
+            i("Subtitle size and colour", "Playback", .player, ["appearance", "font", "background", "delay"]),
+            i("Skip intro", "Playback", .player, ["recap credits jellyfin segments"]),
+            i("Home screen", "Playback", .home, ["shelves", "rows", "featured strip", "hero", "carousel", "add shelf", "reorder"]),
+            i("Trakt", "Account", .trakt, ["sign in", "sync", "scrobble", "watchlist", "history", "client id"]),
+            i("Engine and routing log", "Diagnostics", .diagnostics, ["probe", "engine a", "engine c", "playback decisions"]),
+        ]
+        if env.labView != nil { all.append(i("Player lab (P0)", "Diagnostics", .lab, ["harness", "seek test", "measurements"])) }
+        return all
+    }
+
+    private var matches: [Item] {
+        let hits = Set(SettingsSearch.filter(query, items.map(\.entry)))
+        return items.filter { hits.contains($0.entry) }
+    }
 
     var body: some View {
         List {
-            Section("Sources") {
-                NavigationLink("Sources and keys") { SourcesSettingsView() }
-                NavigationLink("Your Services") { YourServicesView() }
-                NavigationLink("Pair \(env.deviceName == "iPhone" ? "Apple TV" : "iPhone")") { pairingDestination }
-            }
-            Section("Playback") {
-                NavigationLink("Streams") { StreamsSettingsView() }
-                NavigationLink("Video player") { PlayerSettingsView() }
-            }
-            Section("Account") {
-                NavigationLink("Trakt") { TraktSettingsView() }
-            }
-            Section("Diagnostics") {
-                NavigationLink("Engine and routing log") { DiagnosticsView() }
-                if let lab = env.labView { NavigationLink("Player lab (P0)") { lab() } }
+            if query.trimmingCharacters(in: .whitespaces).isEmpty {
+                Section("Sources") {
+                    link("Sources and keys", .sources)
+                    link("Your Services", .services)
+                    link("Pair \(env.deviceName == "iPhone" ? "Apple TV" : "iPhone")", .pairing)
+                }
+                Section("Playback") {
+                    link("Streams", .streams)
+                    link("Video player", .player)
+                    link("Home screen", .home)
+                }
+                Section("Account") { link("Trakt", .trakt) }
+                Section("Diagnostics") {
+                    link("Engine and routing log", .diagnostics)
+                    if env.labView != nil { link("Player lab (P0)", .lab) }
+                }
+            } else if matches.isEmpty {
+                Text("Nothing matches \"\(query)\".").foregroundStyle(.secondary)
+            } else {
+                ForEach(matches) { item in
+                    NavigationLink { destination(item.page) } label: {
+                        VStack(alignment: .leading) { Text(item.entry.title); Text(item.entry.section).font(.caption).foregroundStyle(.secondary) }
+                    }
+                }
             }
         }
         .navigationTitle("Settings")
+        .searchable(text: $query, prompt: "Search settings")
         .accessibilityIdentifier("settings.list")
     }
 
-    @ViewBuilder private var pairingDestination: some View {
-        #if os(tvOS)
-        PairingReceiverView()
-        #else
-        PairingSenderView()
-        #endif
+    private func link(_ title: String, _ page: Page) -> some View {
+        NavigationLink(title) { destination(page) }
+    }
+
+    @ViewBuilder private func destination(_ page: Page) -> some View {
+        switch page {
+        case .sources: SourcesSettingsView()
+        case .services: YourServicesView()
+        case .pairing:
+            #if os(tvOS)
+            PairingReceiverView()
+            #else
+            PairingSenderView()
+            #endif
+        case .streams: StreamsSettingsView()
+        case .player: PlayerSettingsView()
+        case .home: HomeScreenSettingsView()
+        case .trakt: TraktSettingsView()
+        case .diagnostics: DiagnosticsView()
+        case .lab: if let lab = env.labView { lab() }
+        }
     }
 }
 
@@ -87,6 +152,7 @@ struct SecretRow: View {
 struct SourcesSettingsView: View {
     @Environment(AppEnvironment.self) private var env
     @State private var health: [String: String] = [:]
+    @State private var torboxStatus: String?
 
     var body: some View {
         List {
@@ -106,6 +172,8 @@ struct SourcesSettingsView: View {
                 NavigationLink("Add Jellyfin server") { JellyfinAddView() }
             }
             Section("Health") {
+                Button("Check TorBox account") { Task { await checkTorBox() } }.disabled(env.secret(.torboxAPIKey) == nil)
+                if let torboxStatus { Text(torboxStatus).font(.callout) }
                 Button("Check sources") { Task { await checkHealth() } }
                 ForEach(health.sorted { $0.key < $1.key }, id: \.key) { Text("\($0.key): \($0.value)") }
             }
@@ -117,6 +185,18 @@ struct SourcesSettingsView: View {
         try? env.keychain.remove(account: "jellyfin.\(source.id.uuidString).token")
         env.updateConfig { $0.sources.removeAll { $0.id == source.id } }
         env.rebuild()
+    }
+
+    private func checkTorBox() async {
+        guard let key = env.secret(.torboxAPIKey) else { return }
+        torboxStatus = "Asking TorBox"
+        do {
+            torboxStatus = try await TorBoxClient(apiKey: key).account().summary()
+        } catch TorBoxError.api {
+            torboxStatus = "TorBox rejected this key. Copy it again from TorBox settings."
+        } catch {
+            torboxStatus = "Could not reach TorBox."
+        }
     }
 
     private func checkHealth() async {
@@ -330,6 +410,21 @@ struct PlayerSettingsView: View {
                 ForEach([15, 30, 45, 60, 90], id: \.self) { Text("\($0) seconds before the end").tag($0) }
             }
             .settingsPicker()
+            Section("Subtitle appearance") {
+                Picker("Size", selection: Binding(get: { env.config.playerPrefs.subtitleSizePercent }, set: { v in env.updateConfig { $0.playerPrefs.subtitleSizePercent = v } })) {
+                    Text("Small").tag(80); Text("Normal").tag(100); Text("Large").tag(130); Text("Extra large").tag(160)
+                }
+                .settingsPicker()
+                Picker("Colour", selection: Binding(get: { env.config.playerPrefs.subtitleColor }, set: { v in env.updateConfig { $0.playerPrefs.subtitleColor = v } })) {
+                    Text("White").tag(PlayerPrefs.SubtitleColor.white); Text("Yellow").tag(PlayerPrefs.SubtitleColor.yellow)
+                }
+                .settingsPicker()
+                Toggle("Dark background", isOn: Binding(get: { env.config.playerPrefs.subtitleBackground }, set: { v in env.updateConfig { $0.playerPrefs.subtitleBackground = v } }))
+                Picker("Timing offset (some files only)", selection: Binding(get: { env.config.playerPrefs.subtitleDelaySeconds }, set: { v in env.updateConfig { $0.playerPrefs.subtitleDelaySeconds = v } })) {
+                    ForEach([-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0], id: \.self) { Text($0 == 0 ? "None" : String(format: "%+.1f s", $0)).tag($0) }
+                }
+                .settingsPicker()
+            }
             Picker("Skip intro", selection: Binding(get: { env.config.playerPrefs.skipIntro }, set: { v in env.updateConfig { $0.playerPrefs.skipIntro = v } })) {
                 Text("Off").tag(PlayerPrefs.SkipIntro.off)
                 Text("Show button").tag(PlayerPrefs.SkipIntro.button)

@@ -20,10 +20,26 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>nflx</string>
+		<string>disneyplus</string>
+		<string>max</string>
+		<string>hbomax</string>
+		<string>videos</string>
+		<string>aiv</string>
+		<string>hulu</string>
+		<string>peacock</string>
+		<string>paramountplus</string>
+		<string>crunchyroll</string>
+		<string>youtube</string>
+	</array>
 	<key>LanternaDevManifest</key>
 	<string>$(LANTERNA_DEV_MANIFEST)</string>
 	<key>LanternaDevTMDB</key>
 	<string>$(LANTERNA_DEV_TMDB)</string>
+	<key>LanternaDevTorBox</key>
+	<string>$(LANTERNA_DEV_TORBOX)</string>
 	<key>LanternaDevTraktID</key>
 	<string>$(LANTERNA_DEV_TRAKT_ID)</string>
 	<key>LanternaDevTraktSecret</key>

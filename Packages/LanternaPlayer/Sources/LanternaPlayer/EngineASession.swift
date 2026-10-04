@@ -1,5 +1,6 @@
 #if canImport(UIKit)
 import AVKit
+import CoreMedia
 import EngineA
 import PlayerCore
 import UIKit
@@ -24,8 +25,11 @@ public final class EngineASession: NSObject, PlaybackSession {
     private var firstFrameReported = false
     private var startTime: Double
     private var stalls = 0
+    #if !os(tvOS)
+    private var skipButton: UIButton?
+    #endif
 
-    public init(prepared: PreparedPlayback, startTime: Double = 0, title: String? = nil) {
+    public init(prepared: PreparedPlayback, startTime: Double = 0, title: String? = nil, appearance: SubtitleAppearance = SubtitleAppearance()) {
         engine = prepared.decision.engine
         remux = prepared.remux
         self.startTime = startTime
@@ -38,12 +42,55 @@ public final class EngineASession: NSObject, PlaybackSession {
         super.init()
 
         playerController.player = player
+        Self.apply(appearance, to: item)
         #if os(tvOS)
         playerController.appliesPreferredDisplayCriteriaAutomatically = true
         configureTVMetadata(prepared: prepared, title: title)
         #endif
         observe()
         player.play()
+    }
+
+    /// Size, colour and background through AVTextStyleRule. HLS text tracks cannot be time-shifted, so no delay here.
+    static func apply(_ appearance: SubtitleAppearance, to item: AVPlayerItem) {
+        var attributes: [String: Any] = [
+            kCMTextMarkupAttribute_RelativeFontSize as String: appearance.relativeFontSize,
+            kCMTextMarkupAttribute_ForegroundColorARGB as String: appearance.foregroundARGB,
+        ]
+        if let background = appearance.backgroundARGB { attributes[kCMTextMarkupAttribute_BackgroundColorARGB as String] = background }
+        if let rule = AVTextStyleRule(textMarkupAttributes: attributes) { item.textStyleRules = [rule] }
+    }
+
+    /// "Skip Intro" button: the native contextual action on tvOS, an overlay button on iPhone. Pass nil to remove it.
+    public func setSkipAction(title: String?, handler: (@MainActor () -> Void)?) {
+        #if os(tvOS)
+        if let title, let handler {
+            playerController.contextualActions = [UIAction(title: title, image: UIImage(systemName: "forward.end.fill")) { _ in
+                MainActor.assumeIsolated { handler() }
+            }]
+        } else {
+            playerController.contextualActions = []
+        }
+        #else
+        skipButton?.removeFromSuperview()
+        skipButton = nil
+        guard let title, let handler, let overlay = playerController.contentOverlayView else { return }
+        var configuration = UIButton.Configuration.filled()
+        configuration.title = title
+        configuration.image = UIImage(systemName: "forward.end.fill")
+        configuration.imagePadding = 6
+        configuration.baseBackgroundColor = UIColor(white: 0.1, alpha: 0.85)
+        configuration.baseForegroundColor = .white
+        configuration.cornerStyle = .capsule
+        let button = UIButton(configuration: configuration, primaryAction: UIAction { _ in MainActor.assumeIsolated { handler() } })
+        button.translatesAutoresizingMaskIntoConstraints = false
+        overlay.addSubview(button)
+        NSLayoutConstraint.activate([
+            button.trailingAnchor.constraint(equalTo: overlay.safeAreaLayoutGuide.trailingAnchor, constant: -24),
+            button.bottomAnchor.constraint(equalTo: overlay.safeAreaLayoutGuide.bottomAnchor, constant: -90),
+        ])
+        skipButton = button
+        #endif
     }
 
     #if os(tvOS)

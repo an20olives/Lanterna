@@ -25,7 +25,8 @@ public final class EngineCSession: PlaybackSession {
     private var stateWaiters: [(KSPlayerState) -> Bool] = []
 
     /// - Parameter subtitleTrack: container stream index to select once playing (PGS reroute from Engine A).
-    public init(url: URL, startTime: Double = 0, title: String? = nil, subtitleTrack: Int? = nil) {
+    public init(url: URL, startTime: Double = 0, title: String? = nil, subtitleTrack: Int? = nil,
+                externalSubtitles: [ExternalSubtitle] = [], appearance: SubtitleAppearance = SubtitleAppearance()) {
         KSOptions.firstPlayerType = KSMEPlayer.self
         KSOptions.secondPlayerType = nil
         let options = KSOptions()
@@ -35,6 +36,17 @@ public final class EngineCSession: PlaybackSession {
         var continuation: AsyncStream<PlaybackEvent>.Continuation!
         events = AsyncStream { continuation = $0 }
         self.continuation = continuation
+
+        // KSPlayer keeps subtitle styling in statics on SubtitleModel.
+        let scale = CGFloat(appearance.sizePercent) / 100
+        SubtitleModel.textFontSize = SubtitleModel.Size.standard.rawValue * scale
+        SubtitleModel.textColor = appearance.color == .yellow ? .yellow : .white
+        SubtitleModel.textBackgroundColor = appearance.background ? Color.black.opacity(0.6) : .clear
+        coordinator.subtitleModel.subtitleDelay = appearance.delaySeconds
+        for external in externalSubtitles {
+            guard let source = external.sourceURL else { continue }
+            coordinator.subtitleModel.addSubtitle(info: URLSubtitleInfo(subtitleID: external.id, name: external.label, url: source))
+        }
 
         let view = KSVideoPlayerView(coordinator: coordinator, url: url, options: options, title: title)
         viewController = UIHostingController(rootView: view)

@@ -48,6 +48,9 @@ final class PlaybackController {
     @ObservationIgnored private var firstFrame = false
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var finishing = false
+    @ObservationIgnored private var segments: [MediaSegment] = []
+    @ObservationIgnored private var offeredSegmentStart: Double?
+    @ObservationIgnored private var autoSkipped = Set<Double>()
 
     private static let log = Logger(subsystem: "lanterna", category: "playback")
 
@@ -64,6 +67,9 @@ final class PlaybackController {
         sessionID = UUID().uuidString
         scrobbleCount = 0
         finishing = false
+        segments = []
+        offeredSegmentStart = nil
+        autoSkipped = []
 
         guard let source = await env.registry.source(for: request.candidate.sourceID) else {
             errorMessage = "That source is not available any more."
@@ -77,14 +83,18 @@ final class PlaybackController {
                                                subtitlesEnabled: prefs.subtitlesEnabled, showForcedSubtitles: prefs.showForcedSubtitles),
                 hardware: PlaybackRouter.hardwareCapabilities(),
                 transcodeTarget: AudioTranscodeTarget(rawValue: prefs.audioTranscode) ?? .alac)
-            let prepared = try await router.prepare(url: locator.url, context: context)
+            async let subtitles = env.externalSubtitles(for: request.ref)
+            if case .jellyfin(let itemID, _) = request.candidate.locatorHint, let jellyfin = source as? JellyfinSource {
+                segments = await jellyfin.segments(itemID: itemID)
+            }
+            let prepared = try await router.prepare(url: locator.url, context: context, externalSubtitles: await subtitles)
             self.prepared = prepared
             await logRoute(prepared, outcome: "opening")
             // A failed probe with no playable route is reported, not played blind.
             if prepared.record.probe == nil, prepared.record.failure != nil, prepared.decision.engine == .c, prepared.record.decision.reasons.contains(.probeFailed) {
                 // Engine C can still try the raw link, so continue.
             }
-            let session = router.makeSession(for: prepared, startTime: request.startAt, title: request.displayTitle)
+            let session = router.makeSession(for: prepared, startTime: request.startAt, title: request.displayTitle, appearance: env.subtitleAppearance)
             attach(session)
             startTicker()
         } catch let error as SourceError where error == .needsCredentials {
@@ -142,7 +152,9 @@ final class PlaybackController {
     private func reroute(reason: RouteReason, at time: Double, track: Int?) {
         guard let prepared, let old = session else { return }
         old.stop()
-        let (next, newSession) = router.reroute(prepared, to: reason, at: time, subtitleTrack: track, title: request?.displayTitle)
+        let (next, newSession) = router.reroute(prepared, to: reason, at: time, subtitleTrack: track, title: request?.displayTitle,
+                                                appearance: env?.subtitleAppearance ?? SubtitleAppearance())
+        offeredSegmentStart = nil
         self.prepared = next
         Task { await logRoute(next, outcome: "rerouted") }
         attach(newSession)
@@ -162,7 +174,30 @@ final class PlaybackController {
         }
     }
 
+    /// Skip Intro: a native player button on Engine A, or an automatic seek, from the server's media segments.
+    private func updateSkip(session: PlaybackSession, env: AppEnvironment) {
+        let mode = env.config.playerPrefs.skipIntro
+        guard mode != .off, !segments.isEmpty, firstFrame else { return }
+        let engineA = session as? EngineASession
+        guard let segment = SegmentTracker.active(at: session.currentTime, in: segments) else {
+            if offeredSegmentStart != nil { offeredSegmentStart = nil; engineA?.setSkipAction(title: nil, handler: nil) }
+            return
+        }
+        if mode == .auto || engineA == nil {
+            // Credits are left to Up Next; the button-less engine skips intros and recaps only when asked to auto-skip.
+            guard mode == .auto, segment.kind != .outro, autoSkipped.insert(segment.start).inserted else { return }
+            Task { _ = await session.seek(to: segment.end) }
+        } else if offeredSegmentStart != segment.start {
+            offeredSegmentStart = segment.start
+            engineA?.setSkipAction(title: segment.skipLabel) { [weak self] in
+                self?.offeredSegmentStart = nil
+                Task { _ = await session.seek(to: segment.end) }
+            }
+        }
+    }
+
     private func tick(_ seconds: Int) {
+        if let session, let env { updateSkip(session: session, env: env) }
         guard let session, let request, let next = request.next, let env else { upNext = nil; return }
         let duration = session.duration ?? prepared?.probe?.durationSeconds ?? 0
         let lead = Double(env.config.playerPrefs.nextEpisodeLeadSeconds)

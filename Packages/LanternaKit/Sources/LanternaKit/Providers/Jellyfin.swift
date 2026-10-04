@@ -323,6 +323,8 @@ public struct JellyfinSource: MediaSource {
         return format
     }
 
+    public func segments(itemID: String) async -> [MediaSegment] { (try? await client.segments(itemID: itemID)) ?? [] }
+
     public func resolve(_ hint: LocatorHint) async throws -> PlaybackLocator {
         guard case .jellyfin(let itemID, let mediaSourceID) = hint else { throw SourceError.unsupported }
         // The token rides in the URL too because the player's byte source cannot add headers.

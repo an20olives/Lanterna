@@ -32,7 +32,7 @@ struct SearchView: View {
                 .padding(.vertical, 20)
             }
             .searchable(text: $query, prompt: "Movies, shows and people")
-            .navigationDestination(for: TitleSummary.self) { DetailView(summary: $0) }
+            .lanternaDestinations()
         }
         .task(id: query) {
             let trimmed = query.trimmingCharacters(in: .whitespaces)
@@ -65,12 +65,15 @@ struct SearchView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: Metrics.rowSpacing) {
                     ForEach(results.people) { person in
-                        VStack {
-                            RemoteImage(url: TMDBImage.url(person.profilePath, .profile), placeholder: person.name)
-                                .frame(width: 110, height: 110).clipShape(Circle())
-                            Text(person.name).font(.caption).lineLimit(1)
+                        NavigationLink(value: PersonRoute(id: person.id, name: person.name, profilePath: person.profilePath)) {
+                            VStack {
+                                RemoteImage(url: TMDBImage.url(person.profilePath, .profile), placeholder: person.name)
+                                    .frame(width: 110, height: 110).clipShape(Circle())
+                                Text(person.name).font(.caption).lineLimit(1)
+                            }
+                            .frame(width: 130)
                         }
-                        .frame(width: 130)
+                        .cardButtonStyle()
                     }
                 }
                 .padding(.horizontal, Metrics.gutter)

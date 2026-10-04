@@ -67,6 +67,44 @@ public struct TorBoxItem: Sendable, Hashable, Codable, Identifiable {
     }
 }
 
+/// What TorBox says about the account behind a key. The email is never read.
+public struct TorBoxAccountStatus: Sendable, Equatable {
+    public var plan: Int
+    public var premiumExpires: Date?
+    public var isSubscribed: Bool
+
+    public init(plan: Int, premiumExpires: Date?, isSubscribed: Bool) {
+        self.plan = plan
+        self.premiumExpires = premiumExpires
+        self.isSubscribed = isSubscribed
+    }
+
+    public var planName: String {
+        switch plan {
+        case 0: "Free"
+        case 1: "Essential"
+        case 2: "Pro"
+        case 3: "Standard"
+        default: "Plan \(plan)"
+        }
+    }
+
+    public func isPremium(now: Date = Date()) -> Bool {
+        guard plan > 0 else { return false }
+        if let premiumExpires { return premiumExpires > now }
+        return isSubscribed
+    }
+
+    public var isPremium: Bool { isPremium() }
+
+    public func summary(now: Date = Date()) -> String {
+        if plan == 0 { return "Free plan. TorBox will not serve downloads on a free plan." }
+        if let premiumExpires, premiumExpires <= now { return "\(planName) plan expired on \(premiumExpires.formatted(date: .abbreviated, time: .omitted))." }
+        if let premiumExpires { return "\(planName) plan, active until \(premiumExpires.formatted(date: .abbreviated, time: .omitted))." }
+        return isSubscribed ? "\(planName) plan, subscribed." : "\(planName) plan, but not subscribed."
+    }
+}
+
 /// TorBox API v1 (https://api-docs.torbox.app). The key lives in Keychain; this type only holds it in memory.
 public struct TorBoxClient: Sendable {
     public static let baseURL = URL(string: "https://api.torbox.app/v1/api")!
@@ -77,6 +115,24 @@ public struct TorBoxClient: Sendable {
     public init(apiKey: String, transport: any HTTPTransport = URLSessionTransport()) {
         self.apiKey = apiKey
         self.transport = transport
+    }
+
+    /// GET /user/me: plan and expiry for the account that owns this key.
+    public func account() async throws -> TorBoxAccountStatus {
+        struct DTO: Decodable {
+            struct User: Decodable { let plan: Int?; let premium_expires_at: String?; let is_subscribed: Bool? }
+            let success: Bool; let error: String?; let data: User?
+        }
+        var request = URLRequest(url: Self.baseURL.appending(path: "user/me"))
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        let (data, response) = try await transport.data(for: request)
+        guard (200..<300).contains(response.statusCode) else {
+            if response.statusCode == 401 || response.statusCode == 403 { throw TorBoxError.api(code: "BAD_TOKEN", detail: "TorBox rejected this key") }
+            throw TorBoxError.http(status: response.statusCode)
+        }
+        guard let dto = try? JSONDecoder().decode(DTO.self, from: data), dto.success, let user = dto.data else { throw TorBoxError.malformedResponse }
+        let expires = user.premium_expires_at.flatMap { ISO8601DateFormatter().date(from: $0) }
+        return TorBoxAccountStatus(plan: user.plan ?? 0, premiumExpires: expires, isSubscribed: user.is_subscribed ?? false)
     }
 
     public func list(_ kind: TorBoxKind) async throws -> [TorBoxItem] {

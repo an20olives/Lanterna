@@ -40,11 +40,13 @@ struct AppRoot: View {
         .fullScreenCover(isPresented: Binding(get: { playback.presented != nil }, set: { if !$0 { playback.dismissed() } })) {
             if let controller = playback.presented {
                 ZStack(alignment: .bottomTrailing) {
+                    Color.black.ignoresSafeArea()
                     PlayerHost(controller: controller).ignoresSafeArea().accessibilityIdentifier("player.host")
                     if let next = playback.upNext {
                         UpNextCard(upNext: next).padding(60)
                     }
                 }
+                .presentationBackground(.black)
                 .onDisappear { playback.dismissed() }
             }
         }

@@ -47,9 +47,11 @@ targets:
         CFBundleDisplayName: Lanterna
         LanternaDevManifest: $(LANTERNA_DEV_MANIFEST)
         LanternaDevTMDB: $(LANTERNA_DEV_TMDB)
+        LanternaDevTorBox: $(LANTERNA_DEV_TORBOX)
         LanternaDevTraktID: $(LANTERNA_DEV_TRAKT_ID)
         LanternaDevTraktSecret: $(LANTERNA_DEV_TRAKT_SECRET)
         UILaunchScreen: {}
+        LSApplicationQueriesSchemes: [nflx, disneyplus, max, hbomax, videos, aiv, hulu, peacock, paramountplus, crunchyroll, youtube]
         UIBackgroundModes: [audio]
         NSLocalNetworkUsageDescription: Lanterna pairs with your Apple TV and plays from servers on your home network.
         NSBonjourServices: [_lanterna-pair._tcp]
@@ -80,9 +82,11 @@ targets:
         CFBundleDisplayName: Lanterna
         LanternaDevManifest: $(LANTERNA_DEV_MANIFEST)
         LanternaDevTMDB: $(LANTERNA_DEV_TMDB)
+        LanternaDevTorBox: $(LANTERNA_DEV_TORBOX)
         LanternaDevTraktID: $(LANTERNA_DEV_TRAKT_ID)
         LanternaDevTraktSecret: $(LANTERNA_DEV_TRAKT_SECRET)
         UILaunchScreen: {}
+        LSApplicationQueriesSchemes: [nflx, disneyplus, max, hbomax, videos, aiv, hulu, peacock, paramountplus, crunchyroll, youtube]
         UIBackgroundModes: [audio]
         NSLocalNetworkUsageDescription: Lanterna pairs with your iPhone and plays from servers on your home network.
         NSBonjourServices: [_lanterna-pair._tcp]

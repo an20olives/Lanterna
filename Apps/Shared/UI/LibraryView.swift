@@ -45,7 +45,7 @@ struct LibraryView: View {
                 }
                 .padding(.vertical, 20)
             }
-            .navigationDestination(for: TitleSummary.self) { DetailView(summary: $0) }
+            .lanternaDestinations()
         }
         .task(id: env.revision) { await model.load(env: env) }
     }

@@ -107,8 +107,13 @@ public final class RemuxSession: @unchecked Sendable {
     private var server: TinyHTTPServer?
     private var coordinator: SegmentCoordinator?
     private var masterPlaylist = ""
+    /// Rendition ids from 1000 up, clear of container stream indices.
+    private let externalSubtitles: [ExternalSubtitle]
+    static let externalBase = 1000
 
-    public init(source: RemoteByteSource, probe: ProbeResult, decision: RoutingDecision, options: Options = Options()) throws {
+    public init(source: RemoteByteSource, probe: ProbeResult, decision: RoutingDecision, options: Options = Options(),
+                externalSubtitles: [ExternalSubtitle] = []) throws {
+        self.externalSubtitles = externalSubtitles
         guard source.rangeSupported else { throw EngineAError("Engine A needs Range support") }
         self.producer = SegmentProducer(source: source, probe: probe, decision: decision, targetDuration: options.segmentDuration)
         self.decision = decision
@@ -170,9 +175,13 @@ public final class RemuxSession: @unchecked Sendable {
                 guard producer.audio[i] != nil, producer.plan.segments.indices.contains(n) else { return .notFound() }
                 return HTTPResponse(status: 200, contentType: "audio/mp4", body: try await coordinator.segment(n).audio[i] ?? Data())
             case .subtitlePlaylist(let i):
-                guard producer.subtitleTracks[i] != nil else { return .notFound() }
+                guard producer.subtitleTracks[i] != nil || externalIndex(i) != nil else { return .notFound() }
                 let text = PlaylistWriter.mediaPlaylist(plan: producer.plan, initURI: nil, segmentExtension: "vtt")
                 return HTTPResponse(status: 200, contentType: playlist, body: Data(text.utf8))
+            case .subtitleSegment(let i, let n) where externalIndex(i) != nil:
+                guard let external = externalIndex(i).map({ externalSubtitles[$0] }), producer.plan.segments.indices.contains(n) else { return .notFound() }
+                let segment = producer.plan.segments[n]
+                return HTTPResponse(status: 200, contentType: "text/vtt", body: Data(WebVTT.segment(cues: external.cues(from: segment.start, to: segment.end)).utf8))
             case .subtitleSegment(let i, let n):
                 guard producer.subtitleTracks[i] != nil, producer.plan.segments.indices.contains(n) else { return .notFound() }
                 let text = try await coordinator.segment(n).subtitles[i] ?? WebVTT.segment(cues: [])
@@ -182,6 +191,11 @@ public final class RemuxSession: @unchecked Sendable {
             Self.log.error("Engine A request failed: \(String(describing: error), privacy: .public)")
             return HTTPResponse(status: 500, contentType: "text/plain", body: Data())
         }
+    }
+
+    private func externalIndex(_ id: Int) -> Int? {
+        let index = id - Self.externalBase
+        return externalSubtitles.indices.contains(index) ? index : nil
     }
 
     private func buildMaster() -> String {
@@ -216,6 +230,10 @@ public final class RemuxSession: @unchecked Sendable {
             return MasterPlaylist.Subtitle(id: index, name: info.isForced ? "\(name) (Forced)" : name, language: info.language,
                                            isDefault: false, isForced: info.isForced, uri: "s/\(index)/index.m3u8")
         }
+        let externals = externalSubtitles.enumerated().map { offset, external in
+            MasterPlaylist.Subtitle(id: Self.externalBase + offset, name: external.label, language: external.language, isDefault: false, isForced: false,
+                                    uri: "s/\(Self.externalBase + offset)/index.m3u8")
+        }
         let bandwidth = probe.bitRate ?? probe.contentLength.flatMap { length in
             probe.durationSeconds.map { Int(Double(length) * 8 / max($0, 1)) }
         } ?? 20_000_000
@@ -224,7 +242,7 @@ public final class RemuxSession: @unchecked Sendable {
                          width: video?.width ?? 1920, height: video?.height ?? 1080,
                          frameRate: video?.frameRate.value ?? 24, videoRange: range,
                          bandwidth: max(bandwidth, 1_000_000), uri: "v/index.m3u8"),
-            audio: audio, subtitles: subtitles)
+            audio: audio, subtitles: subtitles + externals)
         return PlaylistWriter.masterPlaylist(master)
     }
 }

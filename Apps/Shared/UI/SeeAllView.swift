@@ -42,7 +42,6 @@ struct SeeAllView: View {
             }
             .padding(.vertical, 20)
         }
-        .navigationDestination(for: TitleSummary.self) { DetailView(summary: $0) }
         .task { items = shelf.items; await loadMore(first: true) }
     }
 
@@ -52,7 +51,7 @@ struct SeeAllView: View {
         loading = true
         defer { loading = false }
         guard let tmdb = await env.registry.sources(of: .tmdb).first,
-              let descriptor = (try? await tmdb.catalogs())?.first(where: { $0.id == shelf.id }) else { return }
+              let descriptor = (try? await tmdb.catalogs())?.first(where: { $0.id == shelf.seeAllCatalog }) else { return }
         let start = first ? PageCursor("2") : cursor
         guard let page = try? await tmdb.catalogPage(descriptor, cursor: start) else { return }
         let known = Set(items.map(\.id))

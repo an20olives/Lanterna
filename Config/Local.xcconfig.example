@@ -4,3 +4,4 @@ LANTERNA_DEV_MANIFEST = aiostreams.example.com/stremio/UUID/CONFIG/manifest.json
 // LANTERNA_DEV_TMDB = <TMDB v4 read access token>
 // LANTERNA_DEV_TRAKT_ID = <Trakt client id>
 // LANTERNA_DEV_TRAKT_SECRET = <Trakt client secret>
+// LANTERNA_DEV_TORBOX = <TorBox API key, optional>
