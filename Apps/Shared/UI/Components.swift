@@ -8,19 +8,21 @@ enum Metrics {
     static let gutter: CGFloat = 80
     static let rowSpacing: CGFloat = 40
     static let sectionSpacing: CGFloat = 50
+    static let rowPadding: CGFloat = 24
     #else
     static let poster = CGSize(width: 120, height: 180)
     static let still = CGSize(width: 200, height: 113)
     static let gutter: CGFloat = 16
     static let rowSpacing: CGFloat = 12
-    static let sectionSpacing: CGFloat = 24
+    static let sectionSpacing: CGFloat = 20
+    static let rowPadding: CGFloat = 4
     #endif
 }
 
 extension View {
     @ViewBuilder func cardButtonStyle() -> some View {
         #if os(tvOS)
-        self.buttonStyle(.card)
+        self.buttonStyle(LanternaCardStyle())
         #else
         self.buttonStyle(.plain)
         #endif
@@ -102,7 +104,7 @@ struct ShelfRow: View {
                     }
                 }
                 .padding(.horizontal, Metrics.gutter)
-                .padding(.vertical, 24)
+                .padding(.vertical, Metrics.rowPadding)
             }
         }
         .focusSectionIfTV()
@@ -145,3 +147,24 @@ func formatSize(_ bytes: Int64?) -> String? {
     guard let bytes else { return nil }
     return String(format: "%.1f GB", Double(bytes) / 1_000_000_000)
 }
+
+#if os(tvOS)
+/// tvOS focus: lift, soft shadow and an amber ring (the system ring cannot be recoloured).
+struct LanternaCardStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View { CardBody(configuration: configuration) }
+
+    struct CardBody: View {
+        @Environment(\.isFocused) private var isFocused
+        let configuration: ButtonStyleConfiguration
+
+        var body: some View {
+            configuration.label
+                .padding(4)
+                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.accent, lineWidth: isFocused ? 5 : 0))
+                .scaleEffect(isFocused ? 1.08 : (configuration.isPressed ? 0.97 : 1))
+                .shadow(color: .black.opacity(isFocused ? 0.5 : 0), radius: 18, y: 10)
+                .animation(.easeOut(duration: 0.15), value: isFocused)
+        }
+    }
+}
+#endif

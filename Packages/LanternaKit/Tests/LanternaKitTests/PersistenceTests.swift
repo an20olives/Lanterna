@@ -93,3 +93,14 @@ struct PersistenceTests {
         #expect(await store.detail(for: "movie:603", maxAge: 3600, now: now + 7200) == nil)
     }
 }
+
+struct MarkWatchedTests {
+    @Test func markWatchedCompletesAndUnwatchedClears() async throws {
+        let store = ProgressStore(modelContainer: try LanternaStore.makeContainer(inMemory: true))
+        await store.markWatched(titleKey: "episode:5:1:1", showTMDBID: 5, duration: 2700)
+        #expect(await store.progress(for: "episode:5:1:1")?.isCompleted == true)
+        #expect(await store.history(limit: 5).map(\.titleKey) == ["episode:5:1:1"])
+        await store.markUnwatched(titleKey: "episode:5:1:1")
+        #expect(await store.progress(for: "episode:5:1:1") == nil)
+    }
+}

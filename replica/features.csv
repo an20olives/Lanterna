@@ -1,112 +1,112 @@
 feature,area,priority,original,clone,notes
-AIOStreams addon source (manifest catalog meta stream subtitles),sources,must,retired,no,Steering must-have. Prism had stream Providers then retired them; URL in Keychain only
-TorBox library (torrents usenet web downloads),sources,must,no,no,Steering must-have. iPhone and tvOS; TMDB-matched
-TorBox cached-release check on stream cards,sources,must,yes,no,Prism showed a green check when cached; Lanterna gets it from AIOStreams/TorBox
-Jellyfin source over Tailscale via HTTPS,sources,must,yes,no,TMDB-first matching by ProviderIds; title+year fallback stays unmatched if ambiguous
-MediaSource protocol behind every source,sources,must,no,no,CLAUDE.md architecture; Prism has curated per-server clients
-Jellyfin remote address fallback,sources,should,yes,no,Try primary then remote automatically
-Jellyfin playback progress reporting,sources,should,yes,no,Sessions/Playing
+AIOStreams addon source (manifest catalog meta stream subtitles),sources,must,retired,yes,"Steering must-have. Prism had stream Providers then retired them; URL in Keychain only | Built: Client, source and recorded real response tested; streams resolve once the debrid account is active"
+TorBox library (torrents usenet web downloads),sources,must,no,partial,"Steering must-have. iPhone and tvOS; TMDB-matched | Built: Client, source and Media Library screen built against fixtures; not exercised live"
+TorBox cached-release check on stream cards,sources,must,yes,yes,Prism showed a green check when cached; Lanterna gets it from AIOStreams/TorBox | Built: Ready mark from the AIOStreams cache claim
+Jellyfin source over Tailscale via HTTPS,sources,must,yes,partial,"TMDB-first matching by ProviderIds; title+year fallback stays unmatched if ambiguous | Built: Auth, Quick Connect, library, streams, progress built against fixtures; no live server run"
+MediaSource protocol behind every source,sources,must,no,yes,CLAUDE.md architecture; Prism has curated per-server clients | Built: LanternaKit/Core/MediaSource.swift with five adapters
+Jellyfin remote address fallback,sources,should,yes,no,Try primary then remote automatically | Built: Remote URL is stored; automatic fallback not built
+Jellyfin playback progress reporting,sources,should,yes,partial,"Sessions/Playing | Built: Reports start, progress, stop; fixtures only"
 Jellyfin trickplay thumbnails for scrub,sources,could,yes,no,
 Server badge on posters for owned titles,sources,should,yes,no,
-Media Library browse (own files only),library,should,yes,no,Sort Title Year Recently Added
-PlaybackRouter with two engines (A remux to HLS; C FFmpeg fallback),player,must,no,no,Steering must-have. Log every decision with the probe result
-Stream probe before play (container codecs DV profile audio subs),player,must,yes,no,Prism probes to set display criteria
-Engine A: DV P5 and P8.x stream copy with DV mode switch,player,must,yes,no,Highest-risk item; verify on real Apple TV
-Engine A: HDR10 and HLG with mode switch,player,must,yes,no,
-Engine A: EAC3 Atmos copy,player,must,yes,no,
-Engine A: DTS DTS-HD TrueHD transcode to EAC3 5.1,player,must,partial,no,Prism claims TrueHD Atmos kept; Lanterna accepts losing objects. Record in P0
-Engine A: SRT and ASS to WebVTT renditions,player,must,yes,no,
-Engine A: native tvOS transport bar info panel chapters Siri rewind scrub thumbnails,player,must,yes,no,AVPlayerViewController
-Engine A: frame-rate and dynamic-range matching,player,must,yes,no,Wait for mode switch before first frame
-Engine C: Hi10P AV1 VC-1 PGS and probe failures,player,must,yes,no,Prism plays these in its own engine
-Engine C: Now Playing display criteria PiP and native-like transport by hand,player,must,no,no,
-PGS selection reroutes A to C at current position,player,must,no,no,
-DV Profile 7 to 8.1 metadata rewrite,player,could,yes,no,Prism does this frame by frame; not in Lanterna plan; add a P7 file to P0 corpus
-Resume from saved position (never 0:00),player,must,yes,no,Prism shipped several fixes for this
+Media Library browse (own files only),library,should,yes,partial,Sort Title Year Recently Added | Built: List with play; no sort menu
+PlaybackRouter with two engines (A remux to HLS; C FFmpeg fallback),player,must,no,partial,Steering must-have. Log every decision with the probe result | Built: Router and both engines run in the simulator and tests; on-TV gate not recorded
+Stream probe before play (container codecs DV profile audio subs),player,must,yes,yes,"Prism probes to set display criteria | Built: FFmpegProber, logged per decision"
+Engine A: DV P5 and P8.x stream copy with DV mode switch,player,must,yes,partial,Highest-risk item; verify on real Apple TV | Built: dvcC/dvvC kept in init segment (unit tested); TV mode switch unverified
+Engine A: HDR10 and HLG with mode switch,player,must,yes,partial,Built: colr/hvcC and VIDEO-RANGE written; simulator cannot verify; mdcv/clli not written
+Engine A: EAC3 Atmos copy,player,must,yes,partial,Built: Copied with JOC channel signalling; TV unverified
+Engine A: DTS DTS-HD TrueHD transcode to EAC3 5.1,player,must,partial,yes,"Prism claims TrueHD Atmos kept; Lanterna accepts losing objects. Record in P0 | Built: DTS, DTS-HD, TrueHD to ALAC/FLAC/AAC 5.1 (tested)"
+Engine A: SRT and ASS to WebVTT renditions,player,must,yes,yes,Built: WebVTT renditions (tested)
+Engine A: native tvOS transport bar info panel chapters Siri rewind scrub thumbnails,player,must,yes,partial,AVPlayerViewController | Built: AVPlayerViewController with chapters and custom menu; TV unverified
+Engine A: frame-rate and dynamic-range matching,player,must,yes,partial,Wait for mode switch before first frame | Built: appliesPreferredDisplayCriteriaAutomatically; TV unverified
+Engine C: Hi10P AV1 VC-1 PGS and probe failures,player,must,yes,partial,"Prism plays these in its own engine | Built: KSPlayer MEPlayer; plays 8-bit in simulator, Hi10P crashed the simulator renderer"
+Engine C: Now Playing display criteria PiP and native-like transport by hand,player,must,no,partial,Built: KSPlayer stock controls and Now Playing; no hand-built transport yet
+PGS selection reroutes A to C at current position,player,must,no,partial,Built: Custom menu item reroutes to C; untested on device
+DV Profile 7 to 8.1 metadata rewrite,player,could,yes,no,Prism does this frame by frame; not in Lanterna plan; add a P7 file to P0 corpus | Built: Not planned for v1
+Resume from saved position (never 0:00),player,must,yes,yes,"Prism shipped several fixes for this | Built: ProgressStore start offset, never 0:00 (tested)"
 Skip Intro button from server markers,player,should,yes,no,Jellyfin segment markers; no Prism database
 Recap skip,player,could,yes,no,
-Up Next countdown card and auto-play next episode,player,must,yes,no,Configurable 15 to 90 s before end
+Up Next countdown card and auto-play next episode,player,must,yes,partial,Configurable 15 to 90 s before end | Built: Card and auto-advance built; not UI tested
 Pre-resolve next episode stream near end,player,should,yes,no,
-Audio and subtitle track switching in player,player,must,yes,no,Grouped by language; preferred first
-Default audio keeps file's own track; skip commentary and AD,player,should,yes,no,
-Forced subtitles auto-select,player,should,yes,no,Metadata only
+Audio and subtitle track switching in player,player,must,yes,partial,"Grouped by language; preferred first | Built: Native menus on A, KSPlayer menus on C"
+Default audio keeps file's own track; skip commentary and AD,player,should,yes,partial,Built: Routing keeps the file's default; commentary filter not applied
+Forced subtitles auto-select,player,should,yes,partial,Metadata only | Built: Forced preference feeds routing
 Subtitle appearance (font size delay position),player,should,yes,no,
-External subtitles from AIOStreams subtitle resource,player,should,partial,no,Prism uses OpenSubtitles and SubDL
+External subtitles from AIOStreams subtitle resource,player,should,partial,no,"Prism uses OpenSubtitles and SubDL | Built: AIOStreams subtitle API implemented, not wired into the player"
 Playback speed 0.5x to 2x,player,could,yes,no,
-Stats for nerds overlay,player,could,yes,no,Useful during P0
+Stats for nerds overlay,player,could,yes,no,Useful during P0 | Built: Diagnostics and the P0 lab exist
 Quiet reconnect on brief network drop,player,should,yes,no,
-Now Playing and remote fast-forward and rewind commands,player,must,yes,no,Engine A gets most of this free
-PiP on iPhone,player,should,yes,no,
-AirPlay from iPhone,player,could,yes,no,
+Now Playing and remote fast-forward and rewind commands,player,must,yes,partial,Engine A gets most of this free | Built: Engine A via AVKit; Engine C via KSPlayer
+PiP on iPhone,player,should,yes,partial,Built: AVPlayerViewController default plus playback audio session; untested
+AirPlay from iPhone,player,could,yes,partial,Built: AVPlayerViewController default; untested
 Shazam soundtrack recognition,player,skip,yes,skip,Not needed
 AI on-device subtitles,player,skip,yes,skip,Not needed
 External player handoff (Infuse VLC),player,could,yes,no,
-Stream picker grouped by source with badge strip,streams,must,yes,no,Resolution HDR DV audio Atmos size release group
-Auto-select stream with progress overlay,streams,must,yes,no,Checking n of m sources
-Stream filters requirements and sort,streams,should,yes,no,Resolution DV Atmos size
-Source order setting,streams,should,yes,no,
-Unavailable streams labelled and excluded from auto-select,streams,should,yes,no,
-Failing source cooldown,streams,should,yes,no,
-Quick Play from Continue Watching,streams,must,yes,no,
+Stream picker grouped by source with badge strip,streams,must,yes,yes,"Resolution HDR DV audio Atmos size release group | Built: Grouped by source with badge strip, size, cached mark"
+Auto-select stream with progress overlay,streams,must,yes,yes,Checking n of m sources | Built: Checking n of m overlay (UI tested)
+Stream filters requirements and sort,streams,should,yes,yes,"Resolution DV Atmos size | Built: Resolution, DV, Atmos, size, sort"
+Source order setting,streams,should,yes,yes,
+Unavailable streams labelled and excluded from auto-select,streams,should,yes,yes,Built: Excluded from auto-select (tested)
+Failing source cooldown,streams,should,yes,yes,Built: Tested
+Quick Play from Continue Watching,streams,must,yes,yes,Built: Continue Watching starts playback directly (UI tested)
 Copy stream URL,streams,could,yes,no,Must redact in logs
-Home with Continue Watching and shelves (tvOS),home,must,yes,no,
-Home with Continue Watching and shelves (iPhone),home,must,yes,no,
+Home with Continue Watching and shelves (tvOS),home,must,yes,yes,Built: UI tested on the simulator
+Home with Continue Watching and shelves (iPhone),home,must,yes,yes,Built: Builds and renders in the iPhone simulator
 Hero carousel (optional),home,should,yes,no,
-Custom shelves from filters (genre year rating language),home,should,yes,no,Cap 20
+Custom shelves from filters (genre year rating language),home,should,yes,no,Cap 20 | Built: Config supports presets; no editor
 Shelves from public TMDB Trakt MDBList Letterboxd lists,home,could,yes,no,Trakt lists first
 Showcases and folders with artwork,home,skip,yes,skip,Not needed for one owner
-See All grid with filter and sort,home,should,yes,no,tvOS ends every shelf with See All
+See All grid with filter and sort,home,should,yes,partial,tvOS ends every shelf with See All | Built: Paged grid with client-side sort; no filter sheet
 Automatic personalized Home,home,skip,yes,skip,
-Movie detail page,detail,must,yes,no,
-Show detail with season picker and episodes,detail,must,yes,no,
-Smart Resume Play on show detail,detail,must,yes,no,
+Movie detail page,detail,must,yes,yes,
+Show detail with season picker and episodes,detail,must,yes,yes,"Built: Seasons, episodes, progress marks"
+Smart Resume Play on show detail,detail,must,yes,yes,"Built: Unfinished episode, else next, else S1E1"
 Trailers row,detail,should,yes,no,TMDB video keys; no Prism resolver
-Cast row and person page,detail,should,yes,no,
+Cast row and person page,detail,should,yes,partial,Built: Cast row only; no person page
 Ratings strip and reviews,detail,could,yes,no,
-Mark watched / mark up to here,detail,should,yes,no,
+Mark watched / mark up to here,detail,should,yes,yes,"Built: Movie button, episode menu, mark up to here, mark unwatched; queued for Trakt history"
 Thumbs up down and personal ratings,detail,could,yes,no,
-Context menus on posters,detail,should,yes,no,Long-press on tvOS
+Context menus on posters,detail,should,yes,partial,Long-press on tvOS | Built: Continue Watching card only
 Parents Guide and Ask Prism AI,detail,skip,yes,skip,
-Search with Movies Shows Cast rows,search,must,yes,no,
-Search history and genre browse grid,search,should,yes,no,
+Search with Movies Shows Cast rows,search,must,yes,yes,Built: TMDB multi search; needs a TMDB token to show results
+Search history and genre browse grid,search,should,yes,partial,Built: Recent searches; no genre grid
 AI natural-language search and AI shelves,search,skip,yes,skip,
-Library: watchlist favorites history,library,must,yes,no,
-Coming Soon (14 days),library,should,yes,no,
+Library: watchlist favorites history,library,must,yes,yes,
+Coming Soon (14 days),library,should,yes,yes,Built: Next 14 days for watchlist and in-progress shows
 Custom lists editable (Trakt lists),library,could,yes,no,
 Downloads for offline (iPhone),library,could,yes,no,
 Release notifications,library,could,yes,no,Local only; no push entitlement
-Trakt device-code login on Apple TV,sync,must,yes,no,
-Trakt sync: history watchlist continue watching,sync,must,yes,no,Single sync source
-Trakt scrobble start pause stop,sync,must,yes,no,
-Cross-device resume within 10 s,sync,must,no,no,P5 gate
-Cached Continue Watching shown at cold launch,sync,should,yes,no,
-Continue Watching remove and hidden-shows restore,sync,should,yes,no,
+Trakt device-code login on Apple TV,sync,must,yes,yes,"Built: Code, QR, polling; client tested, not run against live Trakt"
+Trakt sync: history watchlist continue watching,sync,must,yes,yes,"Single sync source | Built: Playback, watchlist, history pull; push via outbox (tested)"
+Trakt scrobble start pause stop,sync,must,yes,yes,Built: Outbox with idempotency and backoff (tested)
+Cross-device resume within 10 s,sync,must,no,yes,P5 gate | Built: Two-device test with a fake Trakt: within 10 s; not run on real devices
+Cached Continue Watching shown at cold launch,sync,should,yes,yes,Built: Local store shown first
+Continue Watching remove and hidden-shows restore,sync,should,yes,partial,Built: Remove with 30 day hide; no restore screen
 iCloud library sync,sync,skip,yes,skip,Free Personal Team cannot use iCloud
 SIMKL and MDBList sync,sync,skip,yes,skip,
-Your Services: manual declaration of subscribed services,services,must,yes,no,No subscription API exists; never pretend there is
-Your Services: TMDB watch-provider lookup archive per region,services,must,yes,no,Cached locally with fetched_at
-Your Services: Open in service deep link per title,services,must,yes,no,Per-service link level: episode title show or app only
-Your Services cards in stream picker and no-streams screen,services,must,yes,no,
-Watch region setting,services,should,yes,no,
-QR pairing iPhone to Apple TV for credentials,pairing,must,no,no,Replaces Prism Web Setup; local network only
-First-run setup on Apple TV without typing,pairing,must,yes,no,QR pairing or Trakt device code
+Your Services: manual declaration of subscribed services,services,must,yes,yes,No subscription API exists; never pretend there is
+Your Services: TMDB watch-provider lookup archive per region,services,must,yes,yes,Cached locally with fetched_at | Built: Cached 7 days per region
+Your Services: Open in service deep link per title,services,must,yes,yes,Per-service link level: episode title show or app only | Built: App-level launch for every listed service; per-service link gaps are logged in DeepLinkArchive.json
+Your Services cards in stream picker and no-streams screen,services,must,yes,yes,
+Watch region setting,services,should,yes,yes,
+QR pairing iPhone to Apple TV for credentials,pairing,must,no,yes,Replaces Prism Web Setup; local network only | Built: Protocol and loopback transport tested; camera scan path untested in the simulator
+First-run setup on Apple TV without typing,pairing,must,yes,partial,QR pairing or Trakt device code | Built: QR receiver and Trakt code exist; first-run screen routes to them
 iPhone remote control of Apple TV playback,pairing,could,yes,no,Prism Companion Remote
 Play on Apple TV from iPhone,pairing,could,yes,no,
-Settings root,settings,must,yes,no,
+Settings root,settings,must,yes,yes,
 Settings search,settings,could,yes,no,
-Diagnostics: routing log and source health,settings,should,partial,no,Prism has media-server diagnostics
-Secrets in Keychain only and redacted in logs,settings,must,yes,no,
+Diagnostics: routing log and source health,settings,should,partial,yes,Prism has media-server diagnostics | Built: Routing log and source health
+Secrets in Keychain only and redacted in logs,settings,must,yes,yes,Built: Redactor everywhere; schema test bans URL and token fields
 Share and backup settings export,settings,skip,yes,skip,
 Content restrictions and biometric lock,settings,skip,yes,skip,
 Profiles and PINs,settings,skip,yes,skip,One owner
-tvOS focus: scale shadow parallax with clearance,tvos,must,yes,no,Amber focus ring
-tvOS focus: restore focused row after detail,tvos,must,yes,no,
-tvOS focus: Menu returns to top not out of app,tvos,must,yes,no,
+tvOS focus: scale shadow parallax with clearance,tvos,must,yes,yes,"Amber focus ring | Built: Lift, shadow and amber ring (screenshot verified in the simulator)"
+tvOS focus: restore focused row after detail,tvos,must,yes,yes,Built: NavigationStack keeps position; not verified | Built: UI test shows focus back on the played poster after Menu
+tvOS focus: Menu returns to top not out of app,tvos,must,yes,partial,Built: Not verified on device
 tvOS focus: down from show artwork lands on current episode,tvos,should,yes,no,
 tvOS focus: cancel stream search restores focus,tvos,should,yes,no,
-tvOS top tab bar navigation,tvos,must,yes,no,
-iPhone tab bar with search role,ios,must,yes,no,
-Liquid Glass chrome,ios,could,yes,no,Blocked until the build Mac has Xcode 26; use system materials meanwhile
+tvOS top tab bar navigation,tvos,must,yes,yes,Built: UI tested
+iPhone tab bar with search role,ios,must,yes,yes,Built: Tab bar; no separate search role | Built: Tab bar with a separate search role
+Liquid Glass chrome,ios,could,yes,no,Blocked until the build Mac has Xcode 26; use system materials meanwhile | Built: Blocked on Xcode 26
 OLED true black mode,ios,could,yes,no,Dark-first anyway
 Plex Emby Silo servers,sources,skip,yes,skip,Not in source list
 WebDAV network shares,sources,skip,yes,skip,

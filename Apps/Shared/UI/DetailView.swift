@@ -42,6 +42,15 @@ final class DetailModel {
         episodeProgress = map
     }
 
+    func markWatched(_ refs: [TitleRef], runtimeMinutes: Int?, env: AppEnvironment) async {
+        for ref in refs {
+            let duration = Double(runtimeMinutes ?? 45) * 60
+            await env.progress.markWatched(titleKey: ref.key, showTMDBID: ref.kind == .episode ? ref.tmdbID : nil, duration: duration)
+            await env.enqueueListOp("historyAdd", ref: ref)
+        }
+        if detail?.summary.ref.kind == .show { await loadEpisodes(env: env) }
+    }
+
     func toggle(_ kind: LibraryKind, ref: TitleRef, env: AppEnvironment) async {
         let key = ref.showRef.key
         let has = await env.library.contains(kind, titleKey: key)
@@ -131,6 +140,9 @@ struct DetailView: View {
             if ref.kind == .movie || model.resume != nil {
                 Button("Choose Stream") { Task { await play(forcePicker: true) } }
             }
+            if ref.kind == .movie {
+                Button("Mark Watched") { Task { await model.markWatched([ref], runtimeMinutes: model.detail?.runtimeMinutes, env: env) } }
+            }
         }
     }
 
@@ -173,7 +185,7 @@ struct DetailView: View {
                         episodeCard(episode)
                     }
                 }
-                .padding(.vertical, 24)
+                .padding(.vertical, Metrics.rowPadding)
             }
             .focusSectionIfTV()
         }
@@ -201,6 +213,23 @@ struct DetailView: View {
         }
         .cardButtonStyle()
         .disabled(unaired)
+        .contextMenu {
+            Button("Mark as watched") {
+                let target = TitleRef.episode(showTMDBID: ref.tmdbID, imdbID: model.detail?.summary.ref.imdbID, season: episode.season, episode: episode.number)
+                Task { await model.markWatched([target], runtimeMinutes: episode.runtimeMinutes, env: env) }
+            }
+            Button("Mark up to here") {
+                let targets = model.episodes.filter { $0.number <= episode.number && ($0.airDate ?? .distantPast) <= Date() }.map {
+                    TitleRef.episode(showTMDBID: ref.tmdbID, imdbID: model.detail?.summary.ref.imdbID, season: $0.season, episode: $0.number)
+                }
+                Task { await model.markWatched(targets, runtimeMinutes: episode.runtimeMinutes, env: env) }
+            }
+            if progress != nil {
+                Button("Mark as unwatched", role: .destructive) {
+                    Task { await env.progress.markUnwatched(titleKey: key); await model.loadEpisodes(env: env) }
+                }
+            }
+        }
     }
 
     private var providersRow: some View {

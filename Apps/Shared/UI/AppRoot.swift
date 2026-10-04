@@ -1,3 +1,4 @@
+import AVFoundation
 import LanternaKit
 import SwiftUI
 
@@ -11,17 +12,20 @@ struct AppRoot: View {
     /// The environment is created once by the App and passed in, so a re-evaluated root never builds a second one.
     init(env: AppEnvironment) {
         self.env = env
+        // Playback category so audio continues with the screen locked and PiP works on iPhone.
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
         _sync = State(initialValue: SyncEngine(env: env))
     }
 
     var body: some View {
         TabView {
-            HomeView().tabItem { Label("Home", systemImage: "house") }
-            SearchView().tabItem { Label("Search", systemImage: "magnifyingglass") }
-            LibraryView().tabItem { Label("Library", systemImage: "books.vertical") }
-            NavigationStack { SettingsView() }.tabItem { Label("Settings", systemImage: "gearshape") }
+            Tab("Home", systemImage: "house") { HomeView() }
+            Tab("Library", systemImage: "books.vertical") { LibraryView() }
+            Tab("Settings", systemImage: "gearshape") { NavigationStack { SettingsView() } }
+            Tab("Search", systemImage: "magnifyingglass", role: .search) { SearchView() }
         }
         .tint(Theme.accent)
+        .preferredColorScheme(.dark)
         .environment(env)
         .environment(flow)
         .environment(playback)

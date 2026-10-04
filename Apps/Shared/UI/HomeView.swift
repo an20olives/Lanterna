@@ -10,7 +10,7 @@ struct ContinueItem: Identifiable {
     var id: String { snapshot.titleKey }
 }
 
-struct HomeShelf: Identifiable {
+struct HomeShelf: Identifiable, Hashable {
     var id: String
     var title: String
     var items: [TitleSummary]
@@ -84,6 +84,12 @@ struct HomeView: View {
     @Environment(PlaybackController.self) private var playback
     @State private var model = HomeModel()
     @State private var path: [TitleSummary] = []
+    @State private var seeAll: HomeShelf?
+    @State private var atTop = true
+    #if os(tvOS)
+    @Namespace private var homeScope
+    @Environment(\.resetFocus) private var resetFocus
+    #endif
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -95,6 +101,7 @@ struct HomeView: View {
                 }
             }
             .navigationDestination(for: TitleSummary.self) { DetailView(summary: $0) }
+            .navigationDestination(item: $seeAll) { SeeAllView(shelf: $0) }
         }
         .task(id: env.revision) { await model.load(env: env) }
         .onChange(of: playback.presented == nil) { _, closed in
@@ -103,8 +110,24 @@ struct HomeView: View {
     }
 
     private var content: some View {
+        ScrollViewReader { proxy in
+            scrollContent
+                .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y < 24 } action: { _, new in atTop = new }
+                #if os(tvOS)
+                .focusScope(homeScope)
+                // Menu deep in a shelf goes back to the top of Home; at the top it falls through and leaves the app.
+                .onExitCommand(perform: atTop ? nil : {
+                    withAnimation { proxy.scrollTo("home.top", anchor: .top) }
+                    resetFocus(in: homeScope)
+                })
+                #endif
+        }
+    }
+
+    private var scrollContent: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: Metrics.sectionSpacing) {
+                Color.clear.frame(height: 1).id("home.top")
                 if env.isDemo {
                     NavigationLink(destination: SettingsView()) {
                         Label("Add a TMDB token in Settings to see real titles", systemImage: "key")
@@ -113,7 +136,7 @@ struct HomeView: View {
                 }
                 if !model.continueItems.isEmpty { continueRow }
                 ForEach(model.shelves) { shelf in
-                    ShelfRow(title: shelf.title, items: shelf.items) { path.append($0) }
+                    ShelfRow(title: shelf.title, items: shelf.items, onSelect: { path.append($0) }, onSeeAll: env.isDemo ? nil : { seeAll = shelf })
                 }
                 if model.isLoading { ProgressView().frame(maxWidth: .infinity) }
             }
@@ -155,7 +178,7 @@ struct HomeView: View {
                     }
                 }
                 .padding(.horizontal, Metrics.gutter)
-                .padding(.vertical, 24)
+                .padding(.vertical, Metrics.rowPadding)
             }
         }
         .focusSectionIfTV()

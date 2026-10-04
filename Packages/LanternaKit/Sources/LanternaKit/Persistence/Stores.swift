@@ -95,6 +95,14 @@ public actor ProgressStore {
         try? modelContext.save()
     }
 
+    /// Marks a title finished without playing it. The duration keeps the row valid for later sync.
+    public func markWatched(titleKey: String, showTMDBID: Int?, duration: Double, now: Date = Date()) {
+        record(titleKey: titleKey, showTMDBID: showTMDBID, position: duration, duration: duration, streamID: nil, deviceName: "manual", now: now)
+    }
+
+    /// Clears progress so the title counts as unwatched again.
+    public func markUnwatched(titleKey: String) { remove(titleKey: titleKey) }
+
     /// Finished titles, newest first (local history until Trakt history is pulled).
     public func history(limit: Int) -> [ProgressSnapshot] {
         var descriptor = FetchDescriptor<PlaybackProgress>(predicate: #Predicate { $0.isCompleted },
