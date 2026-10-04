@@ -66,6 +66,12 @@ struct FindView: View {
                 TextField("IMDb ID, e.g. tt0133093 or tt0903747:1:2", text: $model.contentID)
                 Button("Find") { Task { await model.findStreams() } }
             }
+            HStack(spacing: 24) {
+                TextField("Or paste a direct video link to test", text: $model.testURL)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                Button("Play link") { model.selectTestURL() }
+            }
             switch model.streams {
             case .idle:
                 Spacer()

@@ -34,6 +34,7 @@ final class HarnessModel {
 
     var contentType = "movie"
     var contentID = ""
+    var testURL = ""
     var streams: Loadable<[StremioStream]> = .idle
     var selection: SelectedStream?
     var preview: Loadable<Preview> = .idle
@@ -143,6 +144,17 @@ final class HarnessModel {
         } catch {
             streams = .failed(describe(error))
         }
+    }
+
+    /// Bypasses AIOStreams: plays any direct video link through the same pipeline (public samples, other sources).
+    func selectTestURL() {
+        guard let url = URL(string: testURL.trimmingCharacters(in: .whitespacesAndNewlines)),
+              url.scheme == "https" || url.scheme == "http" else {
+            streams = .failed("That is not a web link.")
+            return
+        }
+        let name = url.lastPathComponent.isEmpty ? "Test URL" : url.lastPathComponent
+        select(StremioStream(name: "Test URL", description: nil, url: url, filename: name, videoSize: nil))
     }
 
     // MARK: File

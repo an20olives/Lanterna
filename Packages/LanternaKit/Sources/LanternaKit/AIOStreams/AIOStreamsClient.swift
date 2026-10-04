@@ -21,6 +21,14 @@ public struct StremioStream: Sendable, Hashable, Identifiable {
     public let filename: String?
     public let videoSize: Int64?
 
+    public init(name: String?, description: String?, url: URL, filename: String?, videoSize: Int64?) {
+        self.name = name
+        self.description = description
+        self.url = url
+        self.filename = filename
+        self.videoSize = videoSize
+    }
+
     /// First lines of name and description for pickers. Contains no URL.
     public var summary: String {
         let head = (name ?? "Stream").replacingOccurrences(of: "\n", with: " ")
