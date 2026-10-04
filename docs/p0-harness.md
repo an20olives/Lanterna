@@ -1,5 +1,7 @@
 # P0 harness: build spec (M0 steps 4 and 5)
 
+> Amended: the harness sources streams from AIOStreams (manifest link in Keychain `.aiostreamsManifestURL`, IMDb ID lookup via `AIOStreamsClient`), not from the TorBox API. The TorBox key lives inside the AIOStreams config. Screens 1 and 2 below became "Connect AIOStreams" and "Find streams"; the rest is unchanged.
+
 The player stack is done and tested (`Packages/LanternaPlayer`, `Packages/LanternaKit`). This is the remaining M0 work: a debug tvOS screen that runs the spike on the real Apple TV, plus the app wiring and IPA. Read `docs/p0-player-spike.md` for what is measured and the gates.
 
 ## Constraints (from CLAUDE.md)

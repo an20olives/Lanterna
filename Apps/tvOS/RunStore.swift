@@ -27,9 +27,9 @@ actor RunStore {
         try? exportJSON().write(to: fileURL, options: .atomic)
     }
 
-    /// Free text is redacted again here, with the TorBox key as a known secret.
+    /// Free text is redacted again here, with the manifest URL as a known secret.
     func exportJSON() -> Data {
-        let key = (try? KeychainStore().string(for: .torboxAPIKey)) ?? nil
+        let key = (try? KeychainStore().string(for: .aiostreamsManifestURL)) ?? nil
         return HarnessExport.json(runs: runs, scrub: { Redactor.text($0, secrets: key.map { [$0] } ?? []) })
     }
 }

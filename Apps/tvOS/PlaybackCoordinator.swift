@@ -8,8 +8,7 @@ import UIKit
 @MainActor
 final class PlaybackCoordinator {
     struct Request {
-        var item: TorBoxItem
-        var file: TorBoxFile
+        var url: URL
         var forced: EngineID?
         var seekTest: Bool
         var target: AudioTranscodeTarget
@@ -47,7 +46,7 @@ final class PlaybackCoordinator {
     /// - Parameters:
     ///   - present: shows a view controller full screen, or dismisses when nil.
     ///   - scrub: redacts free text before it is stored.
-    func run(_ request: Request, client: TorBoxClient, scrub: @escaping (String) -> String,
+    func run(_ request: Request, scrub: @escaping (String) -> String,
              present: @escaping (UIViewController?) -> Void) async -> HarnessRun {
         let context = RoutingContext(preferences: Self.preferences, hardware: PlaybackRouter.hardwareCapabilities(),
                                      transcodeTarget: request.target, forcedEngine: request.forced)
@@ -63,8 +62,7 @@ final class PlaybackCoordinator {
 
         var prepared: PreparedPlayback
         do {
-            let link = try await client.downloadLink(kind: request.item.kind, itemID: request.item.id, fileID: request.file.id)
-            prepared = try await router.prepare(url: link, context: context)
+            prepared = try await router.prepare(url: request.url, context: context)
         } catch {
             var failed = HarnessRun(fileName: request.title, mode: mode, requested: request.forced, probeSummary: nil, probe: nil,
                                     decision: RoutingDecision(engine: .c, reasons: [.probeFailed]), enginePlayed: nil, prepareMillis: 0)

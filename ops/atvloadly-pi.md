@@ -46,11 +46,11 @@ The container runs privileged with host D-Bus access, on the same Pi as Ente Pho
 ## P0 harness
 
 1. `make ipa-tvos`, upload `build/Lanterna-tvOS.ipa` in atvloadly, install.
-2. Open Lanterna on the Apple TV, enter the TorBox key (use the iPhone keyboard prompt), pick a file, run Play Auto, Play A, Play C, Seek test, and fill in the observations after each run.
+2. Open Lanterna on the Apple TV, paste your AIOStreams manifest link (use the iPhone keyboard prompt; the TorBox key is already inside that config), enter an IMDb ID (`tt0133093`, or `tt0903747:1:2` for a show episode), pick a stream, run Play Auto, Play A, Play C, Seek test, and fill in the observations after each run.
 3. The Results screen shows the TV's address. From any computer on the same network:
 
 ```
 curl http://<tv-ip>:8765/p0/results.json > p0-results.json
 ```
 
-The server only runs while the app is open. The file holds no URLs or keys. Copy the numbers into `docs/p0-results.md`.
+The server only runs while the app is open. The file holds no URLs, manifest link or keys. Copy the numbers into `docs/p0-results.md`.

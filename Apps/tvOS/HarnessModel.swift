@@ -5,16 +5,9 @@ import Observation
 import PlayerCore
 import UIKit
 
-struct LibraryEntry: Identifiable {
-    let item: TorBoxItem
-    let files: [TorBoxFile]
-    var id: String { "\(item.kind.rawValue)-\(item.id)" }
-}
-
-struct SelectedFile {
-    let entry: LibraryEntry
-    let file: TorBoxFile
-    var title: String { file.shortName ?? (file.name as NSString).lastPathComponent }
+struct SelectedStream {
+    let stream: StremioStream
+    var title: String { stream.title }
 }
 
 enum Loadable<Value> {
@@ -31,7 +24,7 @@ struct Preview {
 @MainActor
 @Observable
 final class HarnessModel {
-    enum Screen { case setup, library, file, observations, results }
+    enum Screen { case setup, find, file, observations, results }
 
     static let resultsPort: UInt16 = 8765
 
@@ -39,8 +32,10 @@ final class HarnessModel {
     var keyDraft = ""
     var setupError: String?
 
-    var library: Loadable<[LibraryEntry]> = .idle
-    var selection: SelectedFile?
+    var contentType = "movie"
+    var contentID = ""
+    var streams: Loadable<[StremioStream]> = .idle
+    var selection: SelectedStream?
     var preview: Loadable<Preview> = .idle
     var transcodeTarget: AudioTranscodeTarget = .alac
     var busy = false
@@ -66,13 +61,10 @@ final class HarnessModel {
     func bootstrap() async {
         guard !started else { return }
         started = true
-        if ProcessInfo.processInfo.arguments.contains("-uitest-reset") { try? keychain.remove(.torboxAPIKey) }
+        if ProcessInfo.processInfo.arguments.contains("-uitest-reset") { try? keychain.remove(.aiostreamsManifestURL) }
         runs = await store.runs
         await startServer()
-        if apiKey() != nil {
-            screen = .library
-            await loadLibrary()
-        }
+        if manifestURL() != nil { screen = .find }
     }
 
     private func startServer() async {
@@ -91,59 +83,63 @@ final class HarnessModel {
         }
     }
 
-    // MARK: Key
+    // MARK: Manifest
 
-    private func apiKey() -> String? {
-        guard let key = (try? keychain.string(for: .torboxAPIKey)) ?? nil, !key.isEmpty else { return nil }
-        return key
+    private func manifestURL() -> URL? {
+        guard let text = (try? keychain.string(for: .aiostreamsManifestURL)) ?? nil, let url = URL(string: text) else { return nil }
+        return url
     }
 
-    func saveKey() async {
-        let key = keyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !key.isEmpty else { setupError = "Enter your key first."; return }
+    private func client() -> AIOStreamsClient? { manifestURL().flatMap { AIOStreamsClient(manifestURL: $0) } }
+
+    private var secrets: [String] { manifestURL().map { [$0.absoluteString] } ?? [] }
+
+    func saveManifest() async {
+        let text = keyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: text.replacingOccurrences(of: "stremio://", with: "https://")),
+              let client = AIOStreamsClient(manifestURL: url) else {
+            setupError = "That is not a manifest link. It should end in manifest.json."
+            return
+        }
+        setupError = nil
+        busy = true
+        defer { busy = false }
         do {
-            try keychain.set(key, for: .torboxAPIKey)
+            _ = try await client.manifest()
+            try keychain.set(url.absoluteString, for: .aiostreamsManifestURL)
             keyDraft = ""
-            setupError = nil
-            screen = .library
-            await loadLibrary()
+            screen = .find
         } catch {
-            setupError = "Could not save the key to the Keychain."
+            setupError = Redactor.text("Could not reach AIOStreams. \(error.localizedDescription)", secrets: [url.absoluteString])
         }
     }
 
-    func removeKey() {
-        try? keychain.remove(.torboxAPIKey)
-        library = .idle
+    func removeManifest() {
+        try? keychain.remove(.aiostreamsManifestURL)
+        streams = .idle
         selection = nil
         screen = .setup
     }
 
-    // MARK: Library
+    // MARK: Find
 
-    func loadLibrary() async {
-        guard let key = apiKey() else { screen = .setup; return }
-        library = .loading
-        let client = TorBoxClient(apiKey: key)
+    func findStreams() async {
+        guard let client = client() else { screen = .setup; return }
+        let id = contentID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !id.isEmpty else { streams = .failed("Enter an IMDb ID like tt0133093. For a show use tt0903747:1:2 for season 1, episode 2."); return }
+        streams = .loading
         do {
-            async let torrents = client.list(.torrents)
-            async let usenet = client.list(.usenet)
-            async let web = client.list(.webDownloads)
-            let all = try await torrents + usenet + web
-            let entries = all.filter(\.isReady).compactMap { item -> LibraryEntry? in
-                let files = item.videoFiles
-                return files.isEmpty ? nil : LibraryEntry(item: item, files: files)
-            }
-            library = .loaded(entries.sorted { $0.item.name.localizedCaseInsensitiveCompare($1.item.name) == .orderedAscending })
+            let found = try await client.streams(type: contentType, id: id)
+            streams = found.isEmpty ? .failed("AIOStreams returned no playable streams for that ID.") : .loaded(found)
         } catch {
-            library = .failed(describe(error, key: key))
+            streams = .failed(describe(error))
         }
     }
 
     // MARK: File
 
-    func select(_ file: TorBoxFile, in entry: LibraryEntry) {
-        selection = SelectedFile(entry: entry, file: file)
+    func select(_ stream: StremioStream) {
+        selection = SelectedStream(stream: stream)
         playError = nil
         screen = .file
         refreshPreview()
@@ -151,24 +147,19 @@ final class HarnessModel {
 
     func refreshPreview() {
         previewTask?.cancel()
-        guard let selection, let key = apiKey() else { return }
+        guard let selection else { return }
         preview = .loading
         let target = transcodeTarget
+        let secrets = secrets
         previewTask = Task {
-            do {
-                let client = TorBoxClient(apiKey: key)
-                let link = try await client.downloadLink(kind: selection.entry.item.kind, itemID: selection.entry.item.id, fileID: selection.file.id)
-                let prepared = try await PlaybackRouter().prepare(url: link, context: context(forced: nil, target: target))
-                // The preview only needs the decision; a real play re-prepares and starts its own remux.
-                prepared.remux?.stop()
-                guard !Task.isCancelled else { return }
-                preview = .loaded(Preview(summary: prepared.record.probeSummary ?? "Probe failed", engine: prepared.record.decision.engine,
-                                          reasons: prepared.record.decision.reasons,
-                                          failure: prepared.record.failure.map { Redactor.text($0, secrets: [key]) }))
-            } catch {
-                guard !Task.isCancelled else { return }
-                preview = .failed(describe(error, key: key))
-            }
+            let prepared = try? await PlaybackRouter().prepare(url: selection.stream.url, context: context(forced: nil, target: target))
+            guard let prepared else { preview = .failed("Probe failed."); return }
+            // The preview only needs the decision; a real play re-prepares and starts its own remux.
+            prepared.remux?.stop()
+            guard !Task.isCancelled else { return }
+            preview = .loaded(Preview(summary: prepared.record.probeSummary ?? "Probe failed", engine: prepared.record.decision.engine,
+                                      reasons: prepared.record.decision.reasons,
+                                      failure: prepared.record.failure.map { Redactor.text($0, secrets: secrets) }))
         }
     }
 
@@ -184,7 +175,8 @@ final class HarnessModel {
     var seekEngine: SeekEngine = .auto
 
     func play(_ choice: PlayChoice) {
-        guard let selection, let key = apiKey(), !busy else { return }
+        guard let selection, !busy else { return }
+        let secrets = secrets
         previewTask?.cancel()
         let engineChoice: SeekEngine
         switch choice {
@@ -207,11 +199,11 @@ final class HarnessModel {
         playError = nil
         let coordinator = PlaybackCoordinator()
         self.coordinator = coordinator
-        let request = PlaybackCoordinator.Request(item: selection.entry.item, file: selection.file, forced: forced,
+        let request = PlaybackCoordinator.Request(url: selection.stream.url, forced: forced,
                                                   seekTest: choice == .seekTest, target: transcodeTarget, title: selection.title)
         Task {
-            let run = await coordinator.run(request, client: TorBoxClient(apiKey: key),
-                                            scrub: { Redactor.text($0, secrets: [key]) },
+            let run = await coordinator.run(request,
+                                            scrub: { Redactor.text($0, secrets: secrets) },
                                             present: { [weak self] in self?.playerController = $0 })
             self.coordinator = nil
             self.busy = false
@@ -241,7 +233,7 @@ final class HarnessModel {
     func saveObservations() async {
         if let run = currentRun { await store.upsert(run); runs = await store.runs }
         currentRun = nil
-        screen = observationsReturn == .file && selection == nil ? .library : observationsReturn
+        screen = observationsReturn == .file && selection == nil ? .find : observationsReturn
     }
 
     func back() {
@@ -249,28 +241,26 @@ final class HarnessModel {
         case .file:
             previewTask?.cancel()
             selection = nil
-            screen = .library
+            screen = .find
         case .results:
-            screen = selection == nil ? .library : .file
+            screen = selection == nil ? .find : .file
         case .observations:
             Task { await saveObservations() }
-        case .setup, .library:
+        case .setup, .find:
             break
         }
     }
 
     func showResults() { screen = .results }
 
-    private func describe(_ error: Error, key: String) -> String {
+    private func describe(_ error: Error) -> String {
         switch error {
-        case TorBoxError.api(let code, let detail):
-            return Redactor.text("TorBox said \(code). \(detail)", secrets: [key])
-        case TorBoxError.http(let status):
-            return "TorBox returned HTTP \(status)."
-        case TorBoxError.malformedResponse:
-            return "TorBox sent a reply Lanterna could not read."
+        case AIOStreamsError.http(let status):
+            return "AIOStreams returned HTTP \(status)."
+        case AIOStreamsError.malformedResponse:
+            return "AIOStreams sent a reply Lanterna could not read."
         default:
-            return Redactor.text(error.localizedDescription, secrets: [key])
+            return Redactor.text(error.localizedDescription, secrets: secrets)
         }
     }
 }

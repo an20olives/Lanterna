@@ -8,7 +8,7 @@ struct HarnessRoot: View {
         Group {
             switch model.screen {
             case .setup: SetupView(model: model)
-            case .library: LibraryView(model: model)
+            case .find: FindView(model: model)
             case .file: FileView(model: model)
             case .observations: ObservationsView(model: model)
             case .results: ResultsView(model: model)
@@ -30,12 +30,14 @@ struct SetupView: View {
 
     var body: some View {
         VStack(spacing: 40) {
-            Text("Connect TorBox").font(.largeTitle.bold()).accessibilityIdentifier("setup.title")
-            Text("Enter your TorBox API key. It stays in this Apple TV's Keychain.")
+            Text("Connect AIOStreams").font(.largeTitle.bold()).accessibilityIdentifier("setup.title")
+            Text("Paste your AIOStreams manifest link. It stays in this Apple TV's Keychain.")
                 .foregroundStyle(.secondary)
-            SecureField("TorBox API key", text: $model.keyDraft)
+            SecureField("AIOStreams manifest link", text: $model.keyDraft)
                 .frame(maxWidth: 900)
-            Button("Save") { Task { await model.saveKey() } }
+            Button("Save") { Task { await model.saveManifest() } }
+                .disabled(model.busy)
+            if model.busy { ProgressView("Checking") }
             if let error = model.setupError { Text(error).foregroundStyle(.red) }
             if let server = model.serverError { Text(server).foregroundStyle(.secondary) }
         }
@@ -43,50 +45,42 @@ struct SetupView: View {
     }
 }
 
-struct LibraryView: View {
+struct FindView: View {
     @Bindable var model: HarnessModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             HStack(spacing: 30) {
-                Text("Library").font(.largeTitle.bold())
+                Text("Find streams").font(.largeTitle.bold())
                 Spacer()
                 Button("Results") { model.showResults() }
-                Button("Reload") { Task { await model.loadLibrary() } }
-                Button("Remove key") { model.removeKey() }
+                Button("Remove link") { model.removeManifest() }
             }
-            switch model.library {
-            case .idle, .loading:
+            HStack(spacing: 24) {
+                Picker("Type", selection: $model.contentType) {
+                    Text("Movie").tag("movie")
+                    Text("Show").tag("series")
+                }
+                TextField("IMDb ID, e.g. tt0133093 or tt0903747:1:2", text: $model.contentID)
+                Button("Find") { Task { await model.findStreams() } }
+            }
+            switch model.streams {
+            case .idle:
                 Spacer()
-                HStack { Spacer(); ProgressView("Loading"); Spacer() }
+            case .loading:
+                Spacer()
+                HStack { Spacer(); ProgressView("Asking AIOStreams"); Spacer() }
                 Spacer()
             case .failed(let message):
+                Text(message).foregroundStyle(.secondary)
                 Spacer()
-                VStack(spacing: 24) {
-                    Text(message).multilineTextAlignment(.center)
-                    Button("Try Again") { Task { await model.loadLibrary() } }
-                }
-                .frame(maxWidth: .infinity)
-                Spacer()
-            case .loaded(let entries):
-                if entries.isEmpty {
-                    Spacer()
-                    Text("No ready video files found.").frame(maxWidth: .infinity)
-                    Spacer()
-                } else {
-                    List {
-                        ForEach(entries) { entry in
-                            Section(entry.item.name) {
-                                ForEach(entry.files) { file in
-                                    Button { model.select(file, in: entry) } label: {
-                                        HStack {
-                                            Text(file.shortName ?? (file.name as NSString).lastPathComponent).lineLimit(1)
-                                            Spacer()
-                                            Text(gigabytes(file.size)).foregroundStyle(.secondary)
-                                        }
-                                    }
-                                }
-                            }
+            case .loaded(let streams):
+                List(streams) { stream in
+                    Button { model.select(stream) } label: {
+                        HStack {
+                            Text(stream.summary).lineLimit(2)
+                            Spacer()
+                            Text(gigabytes(stream.videoSize)).foregroundStyle(.secondary)
                         }
                     }
                 }
@@ -109,7 +103,7 @@ struct FileView: View {
             VStack(alignment: .leading, spacing: 28) {
                 if let selection = model.selection {
                     Text(selection.title).font(.title2.bold()).lineLimit(2)
-                    Text(gigabytes(selection.file.size)).foregroundStyle(.secondary)
+                    Text(gigabytes(selection.stream.videoSize)).foregroundStyle(.secondary)
                 }
                 previewSection
                 Picker("Audio transcode", selection: $model.transcodeTarget) {
