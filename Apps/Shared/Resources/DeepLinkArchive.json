@@ -1,0 +1,13 @@
+[
+  {"providerID": 8, "name": "Netflix", "scheme": "nflx", "level": "app-only", "template": null, "verifiedOn": null, "notes": "Title links need Netflix's own content ID; TMDB does not provide it. Open the app only."},
+  {"providerID": 337, "name": "Disney Plus", "scheme": "disneyplus", "level": "app-only", "template": null, "verifiedOn": null, "notes": "No public content-ID mapping."},
+  {"providerID": 1899, "name": "Max", "scheme": "max", "level": "app-only", "template": null, "verifiedOn": null, "notes": "No public content-ID mapping."},
+  {"providerID": 384, "name": "HBO Max", "scheme": "hbomax", "level": "app-only", "template": null, "verifiedOn": null, "notes": "No public content-ID mapping."},
+  {"providerID": 350, "name": "Apple TV Plus", "scheme": "videos", "level": "app-only", "template": null, "verifiedOn": null, "notes": "Opens the Apple TV app. Title links need Apple's content ID."},
+  {"providerID": 9, "name": "Amazon Prime Video", "scheme": "aiv", "level": "app-only", "template": null, "verifiedOn": null, "notes": "Needs an ASIN for title links."},
+  {"providerID": 15, "name": "Hulu", "scheme": "hulu", "level": "app-only", "template": null, "verifiedOn": null, "notes": "No public content-ID mapping."},
+  {"providerID": 386, "name": "Peacock", "scheme": "peacock", "level": "app-only", "template": null, "verifiedOn": null, "notes": "No public content-ID mapping."},
+  {"providerID": 531, "name": "Paramount Plus", "scheme": "paramountplus", "level": "app-only", "template": null, "verifiedOn": null, "notes": "No public content-ID mapping."},
+  {"providerID": 283, "name": "Crunchyroll", "scheme": "crunchyroll", "level": "app-only", "template": null, "verifiedOn": null, "notes": "No public content-ID mapping."},
+  {"providerID": 192, "name": "YouTube", "scheme": "youtube", "level": "search", "template": "youtube://results?search_query={title}", "verifiedOn": null, "notes": "Search link is unverified on device."}
+]

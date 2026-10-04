@@ -1,0 +1,195 @@
+import LanternaKit
+import Observation
+import SwiftUI
+
+/// Search streams, auto-select or show the picker, then hand off to the player.
+@MainActor
+@Observable
+final class PlayFlow {
+    enum Phase: Equatable {
+        case idle
+        case searching(checked: Int, total: Int)
+        case picking
+        case empty(String)
+    }
+
+    struct Pending {
+        var ref: TitleRef
+        var displayTitle: String
+        var startAt: Double
+        var next: NextEpisode?
+    }
+
+    var phase: Phase = .idle
+    var groups: [(kind: SourceKind, items: [StreamCandidate])] = []
+    var failures: [String] = []
+    var heading = ""
+    @ObservationIgnored var pending: Pending?
+    @ObservationIgnored weak var playback: PlaybackController?
+    @ObservationIgnored private var searchTask: Task<Void, Never>?
+
+    var isPresented: Bool { phase != .idle }
+
+    func start(ref: TitleRef, displayTitle: String, forcePicker: Bool, env: AppEnvironment) async {
+        guard let playback else { return }
+        searchTask?.cancel()
+        heading = displayTitle
+        failures = []
+        phase = .searching(checked: 0, total: 1)
+        let resolved = await env.withIMDb(ref)
+        let progress = await env.progress.progress(for: ref.key)
+        let resume = (progress.map { !$0.isCompleted && $0.fraction < 0.95 && $0.positionSeconds > 5 } ?? false) ? (progress?.positionSeconds ?? 0) : 0
+        let next = await env.nextEpisode(after: resolved)
+        pending = Pending(ref: resolved, displayTitle: displayTitle, startAt: resume, next: next)
+
+        let request = StreamRequest(title: resolved, preferredLanguages: env.config.playerPrefs.audioLanguages, region: env.config.watchRegion)
+        let flow = self
+        let outcome = await env.registry.streams(for: request) { checked, total in
+            Task { @MainActor in
+                if case .searching = flow.phase { flow.phase = .searching(checked: checked, total: total) }
+            }
+        }
+        guard phase != .idle else { return }   // cancelled while searching
+        let prefs = env.config.streamPrefs
+        let usable = outcome.candidates
+        failures = outcome.failures.values.map(Self.describe)
+
+        if prefs.autoSelect, !forcePicker, let pick = StreamSelector.autoSelect(usable, prefs: prefs, remembered: progress?.lastStreamID) {
+            phase = .idle
+            await playback.play(.init(candidate: pick, ref: resolved, displayTitle: displayTitle, startAt: resume, next: next), env: env)
+            return
+        }
+        if usable.isEmpty {
+            phase = .empty(failures.first ?? "No streams found for this title.")
+        } else {
+            groups = StreamSelector.grouped(usable, prefs: prefs)
+            phase = .picking
+        }
+    }
+
+    func choose(_ candidate: StreamCandidate, env: AppEnvironment) async {
+        guard let playback, let pending else { return }
+        phase = .idle
+        await playback.play(.init(candidate: candidate, ref: pending.ref, displayTitle: pending.displayTitle, startAt: pending.startAt, next: pending.next), env: env)
+    }
+
+    /// Plays a file from the user's own library (TorBox or Jellyfin) without a stream search.
+    func playLibraryFile(_ hint: LocatorHint, sourceID: SourceID, kind: SourceKind, name: String, ref: TitleRef, env: AppEnvironment) async {
+        guard let playback else { return }
+        let candidate = StreamCandidate(id: "lib:\(sourceID.rawValue.uuidString):\(name)", sourceID: sourceID, sourceKind: kind, title: ref,
+                                        displayName: name, locatorHint: hint)
+        let progress = await env.progress.progress(for: ref.key)
+        let resume = (progress.map { !$0.isCompleted && $0.positionSeconds > 5 } ?? false) ? (progress?.positionSeconds ?? 0) : 0
+        await playback.play(.init(candidate: candidate, ref: ref, displayTitle: name, startAt: resume, next: nil), env: env)
+    }
+
+    func cancel() {
+        searchTask?.cancel()
+        phase = .idle
+    }
+
+    static func describe(_ error: SourceError) -> String {
+        switch error {
+        case .needsCredentials: "A source rejected its login."
+        case .unreachable: "A source did not answer."
+        case .rateLimited: "A source is resting after errors."
+        default: "A source failed."
+        }
+    }
+}
+
+struct StreamPickerView: View {
+    @Environment(AppEnvironment.self) private var env
+    @Environment(PlayFlow.self) private var flow
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                switch flow.phase {
+                case .idle:
+                    EmptyView()
+                case .searching(let checked, let total):
+                    VStack(spacing: 20) {
+                        ProgressView()
+                        Text("Checking \(min(checked + 1, total)) of \(total) sources").font(.headline)
+                        Text(flow.heading).foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityIdentifier("picker.searching")
+                case .empty(let message):
+                    NoStreamsView(message: message, heading: flow.heading, ref: flow.pending?.ref)
+                case .picking:
+                    list
+                }
+            }
+            .navigationTitle(flow.heading)
+        }
+        #if os(tvOS)
+        .onExitCommand { flow.cancel() }
+        #endif
+    }
+
+    private var list: some View {
+        List {
+            ForEach(flow.groups, id: \.kind) { group in
+                Section(Self.name(group.kind)) {
+                    ForEach(group.items) { candidate in
+                        Button { Task { await flow.choose(candidate, env: env) } } label: { StreamCard(candidate: candidate) }
+                            .disabled(candidate.availability != .playable)
+                    }
+                }
+            }
+        }
+        .accessibilityIdentifier("picker.list")
+    }
+
+    static func name(_ kind: SourceKind) -> String {
+        switch kind {
+        case .jellyfin: "Media Server"
+        case .torbox: "TorBox"
+        case .aiostreams: "Streams"
+        case .tmdb: "TMDB"
+        case .trakt: "Trakt"
+        }
+    }
+}
+
+struct StreamCard: View {
+    let candidate: StreamCandidate
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(candidate.displayName).font(.headline).lineLimit(1)
+                Spacer()
+                if candidate.isCached == true { Label("Ready", systemImage: "checkmark.circle.fill").labelStyle(.iconOnly).foregroundStyle(.green) }
+                if let size = formatSize(candidate.sizeBytes) { Text(size).foregroundStyle(.secondary) }
+            }
+            HStack(spacing: 8) {
+                BadgeStrip(badges: candidate.claimed.badges)
+                if let group = candidate.releaseGroup { Text(group).font(.caption).foregroundStyle(.secondary) }
+                if case .unavailable(let reason) = candidate.availability { Text(reason).font(.caption).foregroundStyle(.red) }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+struct NoStreamsView: View {
+    @Environment(AppEnvironment.self) private var env
+    @Environment(PlayFlow.self) private var flow
+    let message: String
+    let heading: String
+    let ref: TitleRef?
+
+    var body: some View {
+        VStack(spacing: 24) {
+            Text("No streams found").font(.title2.bold()).accessibilityIdentifier("nostreams.title")
+            Text(message).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            if let ref { ServiceCards(ref: ref) }
+            Button("Close") { flow.cancel() }
+        }
+        .padding(Metrics.gutter)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}

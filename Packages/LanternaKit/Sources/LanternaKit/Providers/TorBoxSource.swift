@@ -13,12 +13,12 @@ public struct TorBoxSource: MediaSource {
         self.client = client
     }
 
-    public func libraryPage(cursor: PageCursor?) async throws -> Page<LibraryItem> {
-        var items: [LibraryItem] = []
+    public func libraryPage(cursor: PageCursor?) async throws -> Page<OwnedItem> {
+        var items: [OwnedItem] = []
         for kind in TorBoxKind.allCases {
             do {
                 items += try await client.list(kind).map { item in
-                    LibraryItem(id: "\(kind.rawValue):\(item.id)", sourceID: id, title: item.name, sizeBytes: item.size,
+                    OwnedItem(id: "\(kind.rawValue):\(item.id)", sourceID: id, title: item.name, sizeBytes: item.size,
                                 isReady: item.isReady, statusText: item.isReady ? nil : item.downloadState,
                                 files: item.videoFiles.map {
                                     LibraryFile(id: "\(item.id):\($0.id)", name: $0.shortName ?? $0.name, sizeBytes: $0.size,

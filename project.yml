@@ -32,6 +32,11 @@ targets:
     dependencies:
       - package: LanternaKit
       - package: LanternaPlayer
+      - package: LanternaPlayer
+        product: PlayerCore
+    configFiles:
+      Debug: Config/Base.xcconfig
+      Release: Config/Base.xcconfig
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.lanterna.personal.ios
@@ -40,6 +45,10 @@ targets:
       path: Apps/iOS/Info.plist
       properties:
         CFBundleDisplayName: Lanterna
+        LanternaDevManifest: $(LANTERNA_DEV_MANIFEST)
+        LanternaDevTMDB: $(LANTERNA_DEV_TMDB)
+        LanternaDevTraktID: $(LANTERNA_DEV_TRAKT_ID)
+        LanternaDevTraktSecret: $(LANTERNA_DEV_TRAKT_SECRET)
         UILaunchScreen: {}
         UIBackgroundModes: [audio]
         NSLocalNetworkUsageDescription: Lanterna pairs with your Apple TV and plays from servers on your home network.
@@ -70,6 +79,9 @@ targets:
       properties:
         CFBundleDisplayName: Lanterna
         LanternaDevManifest: $(LANTERNA_DEV_MANIFEST)
+        LanternaDevTMDB: $(LANTERNA_DEV_TMDB)
+        LanternaDevTraktID: $(LANTERNA_DEV_TRAKT_ID)
+        LanternaDevTraktSecret: $(LANTERNA_DEV_TRAKT_SECRET)
         UILaunchScreen: {}
         UIBackgroundModes: [audio]
         NSLocalNetworkUsageDescription: Lanterna pairs with your iPhone and plays from servers on your home network.

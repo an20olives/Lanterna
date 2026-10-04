@@ -20,6 +20,14 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>LanternaDevManifest</key>
+	<string>$(LANTERNA_DEV_MANIFEST)</string>
+	<key>LanternaDevTMDB</key>
+	<string>$(LANTERNA_DEV_TMDB)</string>
+	<key>LanternaDevTraktID</key>
+	<string>$(LANTERNA_DEV_TRAKT_ID)</string>
+	<key>LanternaDevTraktSecret</key>
+	<string>$(LANTERNA_DEV_TRAKT_SECRET)</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

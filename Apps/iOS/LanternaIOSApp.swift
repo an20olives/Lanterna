@@ -2,13 +2,9 @@ import SwiftUI
 
 @main
 struct LanternaIOSApp: App {
+    @State private var env = AppEnvironment()
+
     var body: some Scene {
-        WindowGroup {
-            VStack(spacing: 12) {
-                Text("Lanterna").font(.largeTitle.bold())
-                Text("Player spike runs on Apple TV").foregroundStyle(.secondary)
-            }
-            .tint(Theme.accent)
-        }
+        WindowGroup { AppRoot(env: env) }
     }
 }

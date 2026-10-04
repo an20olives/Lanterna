@@ -1,2 +1,6 @@
 // Copy to Config/Local.xcconfig (gitignored). xcconfig treats // as a comment, so leave off the https:// prefix.
 LANTERNA_DEV_MANIFEST = aiostreams.example.com/stremio/UUID/CONFIG/manifest.json
+// Optional dev credentials, seeded into the Keychain on first launch (never commit Local.xcconfig):
+// LANTERNA_DEV_TMDB = <TMDB v4 read access token>
+// LANTERNA_DEV_TRAKT_ID = <Trakt client id>
+// LANTERNA_DEV_TRAKT_SECRET = <Trakt client secret>

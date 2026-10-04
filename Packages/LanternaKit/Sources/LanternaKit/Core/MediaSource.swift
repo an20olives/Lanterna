@@ -259,7 +259,7 @@ public struct SubtitleCandidate: Identifiable, Sendable {
     }
 }
 
-public struct LibraryItem: Identifiable, Sendable {
+public struct OwnedItem: Identifiable, Sendable {
     public var id: String
     public var sourceID: SourceID
     public var title: String
@@ -340,7 +340,7 @@ public protocol MediaSource: Sendable {
     func metadata(for title: TitleRef) async throws -> TitleDetail
     func streams(for request: StreamRequest) async throws -> [StreamCandidate]
     func subtitles(for request: StreamRequest) async throws -> [SubtitleCandidate]
-    func libraryPage(cursor: PageCursor?) async throws -> Page<LibraryItem>
+    func libraryPage(cursor: PageCursor?) async throws -> Page<OwnedItem>
     func watchProviders(for title: TitleRef, region: String) async throws -> [ProviderOffer]
     /// Turns a candidate into something the player can open. Called at play time only: links are short-lived secrets.
     func resolve(_ hint: LocatorHint) async throws -> PlaybackLocator
@@ -354,7 +354,7 @@ public extension MediaSource {
     func metadata(for title: TitleRef) async throws -> TitleDetail { throw SourceError.unsupported }
     func streams(for request: StreamRequest) async throws -> [StreamCandidate] { throw SourceError.unsupported }
     func subtitles(for request: StreamRequest) async throws -> [SubtitleCandidate] { throw SourceError.unsupported }
-    func libraryPage(cursor: PageCursor?) async throws -> Page<LibraryItem> { throw SourceError.unsupported }
+    func libraryPage(cursor: PageCursor?) async throws -> Page<OwnedItem> { throw SourceError.unsupported }
     func watchProviders(for title: TitleRef, region: String) async throws -> [ProviderOffer] { throw SourceError.unsupported }
     func resolve(_ hint: LocatorHint) async throws -> PlaybackLocator { throw SourceError.unsupported }
     func reportPlayback(_ report: PlaybackReport) async throws { throw SourceError.unsupported }

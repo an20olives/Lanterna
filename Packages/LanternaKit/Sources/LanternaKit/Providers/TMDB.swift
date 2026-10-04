@@ -11,6 +11,10 @@ public enum TMDBImage {
 public struct SearchResults: Sendable {
     public var titles: [TitleSummary]
     public var people: [CastMember]
+    public init(titles: [TitleSummary], people: [CastMember]) {
+        self.titles = titles
+        self.people = people
+    }
 }
 
 /// TMDB API v3 with a v4 read token (Bearer). The token lives in Keychain; this type holds it in memory only.

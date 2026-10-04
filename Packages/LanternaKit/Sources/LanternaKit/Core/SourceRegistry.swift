@@ -26,6 +26,8 @@ public actor SourceRegistry {
 
     public func setSources(_ sources: [any MediaSource]) { self.sources = sources }
 
+    public func source(for id: SourceID) -> (any MediaSource)? { sources.first { $0.id == id } }
+
     public func sources(of kind: SourceKind) -> [any MediaSource] { sources.filter { $0.kind == kind } }
 
     public func sources(with capability: SourceCapabilities) -> [any MediaSource] { sources.filter { $0.capabilities.contains(capability) } }

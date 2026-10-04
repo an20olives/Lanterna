@@ -95,6 +95,22 @@ public actor ProgressStore {
         try? modelContext.save()
     }
 
+    /// Finished titles, newest first (local history until Trakt history is pulled).
+    public func history(limit: Int) -> [ProgressSnapshot] {
+        var descriptor = FetchDescriptor<PlaybackProgress>(predicate: #Predicate { $0.isCompleted },
+                                                           sortBy: [SortDescriptor(\.updatedAt, order: .reverse)])
+        descriptor.fetchLimit = limit
+        return ((try? modelContext.fetch(descriptor)) ?? []).map(snapshot)
+    }
+
+    /// The most recently touched episode of a show, finished or not.
+    public func latestEpisode(forShow showID: Int) -> ProgressSnapshot? {
+        var descriptor = FetchDescriptor<PlaybackProgress>(predicate: #Predicate { $0.showTMDBID == showID },
+                                                           sortBy: [SortDescriptor(\.updatedAt, order: .reverse)])
+        descriptor.fetchLimit = 1
+        return (try? modelContext.fetch(descriptor))?.first.map(snapshot)
+    }
+
     public func pending() -> [ProgressSnapshot] {
         let rows = (try? modelContext.fetch(FetchDescriptor<PlaybackProgress>(predicate: #Predicate { $0.syncStateRaw == "pending" }))) ?? []
         return rows.map(snapshot)
@@ -139,6 +155,7 @@ public struct OutboxEntry: Sendable, Equatable {
     public var op: String
     public var payload: Data
     public var attempts: Int
+    public var createdAt: Date
 }
 
 public enum OutboxTarget: String, Sendable { case trakt, jellyfin }
@@ -159,7 +176,7 @@ public actor OutboxStore {
     public func due(now: Date = Date()) -> [OutboxEntry] {
         let rows = (try? modelContext.fetch(FetchDescriptor<SyncOperation>(predicate: #Predicate { $0.nextAttemptAt <= now },
                                                                            sortBy: [SortDescriptor(\.createdAt)]))) ?? []
-        return rows.map { OutboxEntry(idempotencyKey: $0.idempotencyKey, target: OutboxTarget(rawValue: $0.targetRaw) ?? .trakt, op: $0.opRaw, payload: $0.payload, attempts: $0.attempts) }
+        return rows.map { OutboxEntry(idempotencyKey: $0.idempotencyKey, target: OutboxTarget(rawValue: $0.targetRaw) ?? .trakt, op: $0.opRaw, payload: $0.payload, attempts: $0.attempts, createdAt: $0.createdAt) }
     }
 
     public func complete(idempotencyKey: String) {
@@ -249,6 +266,37 @@ public actor CacheStore {
         guard let row = try? modelContext.fetch(FetchDescriptor<TitleCache>(predicate: #Predicate { $0.titleKey == titleKey })).first,
               now.timeIntervalSince(row.fetchedAt) <= maxAge, let data = row.detailJSON else { return nil }
         return try? JSONDecoder().decode(TitleDetail.self, from: data)
+    }
+
+    /// Routing log (S29). Keeps the newest 500 rows.
+    public func recordProbe(streamID: String, titleKey: String, probeJSON: Data, engine: String, reasons: [String], outcome: String,
+                            failure: String?, now: Date = Date()) {
+        let row = ProbeRecord(streamID: streamID, probeJSON: probeJSON, engineRaw: engine, reasons: reasons, outcomeRaw: outcome, probedAt: now)
+        row.titleKey = titleKey
+        row.failureSummary = failure
+        modelContext.insert(row)
+        let all = (try? modelContext.fetch(FetchDescriptor<ProbeRecord>(sortBy: [SortDescriptor(\.probedAt, order: .reverse)]))) ?? []
+        for old in all.dropFirst(500) { modelContext.delete(old) }
+        try? modelContext.save()
+    }
+
+    public struct ProbeLogEntry: Sendable, Identifiable {
+        public var id: String
+        public var titleKey: String?
+        public var engine: String
+        public var reasons: [String]
+        public var outcome: String
+        public var failure: String?
+        public var probedAt: Date
+        public var probeJSON: Data
+    }
+
+    public func recentProbes(limit: Int = 100) -> [ProbeLogEntry] {
+        var descriptor = FetchDescriptor<ProbeRecord>(sortBy: [SortDescriptor(\.probedAt, order: .reverse)])
+        descriptor.fetchLimit = limit
+        let rows = (try? modelContext.fetch(descriptor)) ?? []
+        return rows.map { ProbeLogEntry(id: "\($0.streamID)-\($0.probedAt.timeIntervalSince1970)", titleKey: $0.titleKey, engine: $0.engineRaw, reasons: $0.reasons,
+                                        outcome: $0.outcomeRaw, failure: $0.failureSummary, probedAt: $0.probedAt, probeJSON: $0.probeJSON) }
     }
 
     public func saveAvailability(titleKey: String, region: String, offers: [ProviderOffer], now: Date = Date()) {

@@ -210,14 +210,14 @@ public struct JellyfinSource: MediaSource {
         return formatter.date(from: trimmed) ?? ISO8601DateFormatter().date(from: trimmed)
     }
 
-    public func libraryPage(cursor: PageCursor?) async throws -> Page<LibraryItem> {
+    public func libraryPage(cursor: PageCursor?) async throws -> Page<OwnedItem> {
         let start = cursor.flatMap { Int($0.value) } ?? 0
         let result = try await client.items([
             "Recursive": "true", "IncludeItemTypes": "Movie,Series", "Fields": "ProviderIds,DateCreated,MediaSources",
             "SortBy": "DateCreated", "SortOrder": "Descending", "StartIndex": String(start), "Limit": "100",
         ])
         let items = result.items.map { item in
-            LibraryItem(id: item.Id, sourceID: id, title: item.Name, year: item.ProductionYear,
+            OwnedItem(id: item.Id, sourceID: id, title: item.Name, year: item.ProductionYear,
                         sizeBytes: item.MediaSources?.first?.Size, dateAdded: Self.date(item.DateCreated),
                         matched: Self.ref(for: item))
         }
