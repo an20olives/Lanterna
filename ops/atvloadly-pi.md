@@ -42,3 +42,15 @@ The container runs privileged with host D-Bus access, on the same Pi as Ente Pho
 - 3 active sideloaded apps per Apple ID. Installing a fourth disables an earlier one.
 - Re-pair after any tvOS update.
 - iPhone: install `build/Lanterna-iOS.ipa` through AltStore. AltStore itself counts toward the 3-app limit on the iPhone.
+
+## P0 harness
+
+1. `make ipa-tvos`, upload `build/Lanterna-tvOS.ipa` in atvloadly, install.
+2. Open Lanterna on the Apple TV, enter the TorBox key (use the iPhone keyboard prompt), pick a file, run Play Auto, Play A, Play C, Seek test, and fill in the observations after each run.
+3. The Results screen shows the TV's address. From any computer on the same network:
+
+```
+curl http://<tv-ip>:8765/p0/results.json > p0-results.json
+```
+
+The server only runs while the app is open. The file holds no URLs or keys. Copy the numbers into `docs/p0-results.md`.
