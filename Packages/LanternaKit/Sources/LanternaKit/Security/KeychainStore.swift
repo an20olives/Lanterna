@@ -27,8 +27,13 @@ public struct KeychainStore: Sendable {
         self.service = service
     }
 
-    public func string(for key: KeychainKey) throws -> String? {
-        var query = baseQuery(key)
+    public func string(for key: KeychainKey) throws -> String? { try string(account: key.rawValue) }
+    public func set(_ value: String, for key: KeychainKey) throws { try set(value, account: key.rawValue) }
+    public func remove(_ key: KeychainKey) throws { try remove(account: key.rawValue) }
+
+    /// Free-form accounts for per-source secrets, e.g. `jellyfin.<sourceID>.token`.
+    public func string(account: String) throws -> String? {
+        var query = baseQuery(account)
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
         var result: CFTypeRef?
@@ -43,12 +48,12 @@ public struct KeychainStore: Sendable {
         }
     }
 
-    public func set(_ value: String, for key: KeychainKey) throws {
+    public func set(_ value: String, account: String) throws {
         let data = Data(value.utf8)
         let update = [kSecValueData as String: data]
-        let status = SecItemUpdate(baseQuery(key) as CFDictionary, update as CFDictionary)
+        let status = SecItemUpdate(baseQuery(account) as CFDictionary, update as CFDictionary)
         if status == errSecItemNotFound {
-            var add = baseQuery(key)
+            var add = baseQuery(account)
             add[kSecValueData as String] = data
             add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
             let addStatus = SecItemAdd(add as CFDictionary, nil)
@@ -58,18 +63,18 @@ public struct KeychainStore: Sendable {
         }
     }
 
-    public func remove(_ key: KeychainKey) throws {
-        let status = SecItemDelete(baseQuery(key) as CFDictionary)
+    public func remove(account: String) throws {
+        let status = SecItemDelete(baseQuery(account) as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw KeychainError.unexpectedStatus(status)
         }
     }
 
-    private func baseQuery(_ key: KeychainKey) -> [String: Any] {
+    private func baseQuery(_ account: String) -> [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: key.rawValue,
+            kSecAttrAccount as String: account,
         ]
     }
 }

@@ -6,9 +6,31 @@ public enum AIOStreamsError: Error, Equatable {
 }
 
 public struct StremioManifest: Sendable, Codable, Equatable {
+    public struct Catalog: Sendable, Codable, Equatable {
+        public let type: String
+        public let id: String
+        public let name: String?
+    }
     public let id: String?
     public let name: String
     public let version: String?
+    public let catalogs: [Catalog]?
+}
+
+public struct StremioMeta: Sendable, Equatable {
+    public let id: String
+    public let type: String
+    public let name: String
+    public let poster: String?
+    public let background: String?
+    public let description: String?
+    public let year: Int?
+}
+
+public struct StremioSubtitle: Sendable, Equatable {
+    public let id: String
+    public let url: URL
+    public let language: String
 }
 
 /// One playable entry from a Stremio addon `/stream` response. The URL is a short-lived credential:
@@ -70,6 +92,39 @@ public struct AIOStreamsClient: Sendable {
         let (data, response) = try await transport.data(for: request)
         try Self.check(response)
         return try Self.decodeStreams(data)
+    }
+
+    public func catalog(type: String, id: String, skip: Int = 0) async throws -> [StremioMeta] {
+        struct DTO: Decodable {
+            struct Meta: Decodable {
+                let id: String; let type: String?; let name: String?; let poster: String?; let background: String?
+                let description: String?; let releaseInfo: String?; let year: String?
+            }
+            let metas: [Meta]
+        }
+        let path = skip > 0 ? "catalog/\(type)/\(id)/skip=\(skip).json" : "catalog/\(type)/\(id).json"
+        let (data, response) = try await transport.data(for: URLRequest(url: baseURL.appending(path: path)))
+        try Self.check(response)
+        guard let dto = try? JSONDecoder().decode(DTO.self, from: data) else { throw AIOStreamsError.malformedResponse }
+        return dto.metas.compactMap { meta in
+            guard let name = meta.name else { return nil }
+            let yearText = meta.releaseInfo ?? meta.year
+            return StremioMeta(id: meta.id, type: meta.type ?? type, name: name, poster: meta.poster, background: meta.background,
+                               description: meta.description, year: yearText.flatMap { Int($0.prefix(4)) })
+        }
+    }
+
+    public func subtitles(type: String, id: String) async throws -> [StremioSubtitle] {
+        struct DTO: Decodable {
+            struct Sub: Decodable { let id: String?; let url: String; let lang: String? }
+            let subtitles: [Sub]
+        }
+        let (data, response) = try await transport.data(for: URLRequest(url: baseURL.appending(path: "subtitles/\(type)/\(id).json")))
+        try Self.check(response)
+        guard let dto = try? JSONDecoder().decode(DTO.self, from: data) else { throw AIOStreamsError.malformedResponse }
+        return dto.subtitles.enumerated().compactMap { index, sub in
+            URL(string: sub.url).map { StremioSubtitle(id: sub.id ?? String(index), url: $0, language: sub.lang ?? "und") }
+        }
     }
 
     func streamURL(type: String, id: String) -> URL {
