@@ -35,3 +35,23 @@ Filled in by the owner from the harness JSON (`curl http://<tv-ip>:8765/p0/resul
 - Engine C: plays 10 of 10: (pass / fail, count)
 - If A missed: why, and whether segment pre-generation was tried:
 - Decision recorded on (date):
+
+## Simulator findings (not gate evidence)
+
+Run on 2026-10-04 in the tvOS 18.5 simulator on the build Mac, using synthetic files served over localhost and the owner's 30 GB Toy Story 4K remux (HEVC Main10 HDR10, DTS 5.1, 34 chapters, no subtitle tracks). The simulator has no HDR display, no hardware decode and no passthrough, so none of this counts toward the gate. It is here so the first on-TV run knows where to look.
+
+| Case | Result in the simulator |
+|---|---|
+| H.264 + AAC MP4, Auto | A-direct, plays, TTFF about 0.6 to 0.8 s |
+| HEVC 8-bit + AC3 MKV | A (audio copied), plays, TTFF about 0.5 s, 10 seeks median 183 ms, p90 222 ms |
+| H.264 + FLAC MKV | A, FLAC to ALAC, plays |
+| HEVC 10-bit SDR MKV | A, plays |
+| HEVC 10-bit HDR10 MKV (synthetic and Toy Story) | A fails to open (AVFoundation -11868 / CoreMedia -17223), reroutes to C as designed. Forcing `VIDEO-RANGE=SDR` changes the error to -12927, so it is not just the range label. Likely a simulator limit; confirm on the TV |
+| Toy Story, 4K HEVC Main10 HDR10, DTS 5.1 | Routed to A (DTS to ALAC), A failed to open as above, Engine C played it. **Peak memory about 6 GB** in the simulator, which would be fatal on an Apple TV. Check on the TV first |
+| Hi10P H.264 MKV | Routed to C. The simulator aborted inside C's Metal renderer (`MetalRender.textures`, simulator buffer limits). Confirm on the TV |
+| Engine C, 8-bit MKV | Plays. TTFF about 580 to 650 ms. Seek median about 1.2 s, p90 about 2 s on a 4 minute file |
+
+Known gaps seen in the logs:
+
+- Engine A's video init segment carries `colr` and `hvcC` but not `mdcv` or `clli` (HDR10 mastering metadata). The TV should still switch to HDR10 from `colr`, but static metadata is not passed on. Check the TV's HDR info panel.
+- The master playlist for the Toy Story file: `CODECS="hvc1.2.4.H153.B0,alac"`, `VIDEO-RANGE=PQ`, 3840x2160, 23.976 fps, ALAC audio group.

@@ -130,6 +130,9 @@ public final class RemuxSession: @unchecked Sendable {
         }
         let port = try await server.start()
         self.server = server
+        Self.log.info("Engine A master playlist:\n\(self.masterPlaylist, privacy: .public)")
+        let initBoxes = [ "colr", "mdcv", "clli", "hvcC", "dvcC", "dvvC", "pasp" ].filter { producer.videoInit.range(of: Data($0.utf8)) != nil }
+        Self.log.info("Engine A video init boxes: \(initBoxes.joined(separator: ","), privacy: .public)")
         Self.log.info("Engine A session ready: \(producer.plan.segments.count) segments, prepare \(producer.stats.prepareMillis) ms")
         return URL(string: "http://127.0.0.1:\(port)/\(token)/master.m3u8")!
     }

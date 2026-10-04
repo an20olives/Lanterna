@@ -7,8 +7,16 @@ struct LanternaTVApp: App {
         env.labView = { AnyView(HarnessRoot(model: HarnessModel())) }
         return env
     }()
+    @State private var lab = HarnessModel()
 
     var body: some Scene {
-        WindowGroup { AppRoot(env: env) }
+        WindowGroup {
+            // `-lab` boots straight into the P0 harness (used for headless simulator runs).
+            if ProcessInfo.processInfo.arguments.contains("-lab") {
+                HarnessRoot(model: lab)
+            } else {
+                AppRoot(env: env)
+            }
+        }
     }
 }
