@@ -100,6 +100,15 @@ struct HTTPRequestHeadTests {
         #expect(text.contains("Content-Type: application/vnd.apple.mpegurl\r\n"))
         #expect(text.hasSuffix("\r\n\r\nabc"))
     }
+
+    @Test func partialContentCarriesExtraHeaders() {
+        let response = HTTPResponse(status: 206, contentType: "video/x-matroska", body: Data("ab".utf8),
+                                    headers: ["Content-Range": "bytes 10-11/100", "Accept-Ranges": "bytes"])
+        let text = String(decoding: response.serialized(), as: UTF8.self)
+        #expect(text.hasPrefix("HTTP/1.1 206 Partial Content\r\n"))
+        #expect(text.contains("Content-Range: bytes 10-11/100\r\n"))
+        #expect(text.contains("Accept-Ranges: bytes\r\n"))
+    }
 }
 
 struct StatsTests {

@@ -82,11 +82,13 @@ public struct HTTPResponse: Sendable {
     public var status: Int
     public var contentType: String
     public var body: Data
+    public var headers: [String: String]
 
-    public init(status: Int, contentType: String, body: Data) {
+    public init(status: Int, contentType: String, body: Data, headers: [String: String] = [:]) {
         self.status = status
         self.contentType = contentType
         self.body = body
+        self.headers = headers
     }
 
     public static func notFound() -> HTTPResponse {
@@ -96,6 +98,7 @@ public struct HTTPResponse: Sendable {
     public func serialized() -> Data {
         let reason = switch status {
         case 200: "OK"
+        case 206: "Partial Content"
         case 404: "Not Found"
         case 503: "Service Unavailable"
         default: "Internal Server Error"
@@ -103,6 +106,7 @@ public struct HTTPResponse: Sendable {
         var head = "HTTP/1.1 \(status) \(reason)\r\n"
         head += "Content-Type: \(contentType)\r\n"
         head += "Content-Length: \(body.count)\r\n"
+        for (name, value) in headers.sorted(by: { $0.key < $1.key }) { head += "\(name): \(value)\r\n" }
         head += "Cache-Control: no-store\r\n"
         head += "Connection: keep-alive\r\n\r\n"
         return Data(head.utf8) + body
