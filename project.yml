@@ -1,0 +1,93 @@
+name: Lanterna
+
+options:
+  bundleIdPrefix: com.lanterna.personal
+  deploymentTarget:
+    iOS: "26.0"
+    tvOS: "26.0"
+  createIntermediateGroups: true
+
+packages:
+  LanternaKit:
+    path: Packages/LanternaKit
+  LanternaPlayer:
+    path: Packages/LanternaPlayer
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+    PRODUCT_NAME: Lanterna
+
+targets:
+  Lanterna-iOS:
+    type: application
+    platform: iOS
+    sources:
+      - Apps/Shared
+      - Apps/iOS
+    dependencies:
+      - package: LanternaKit
+      - package: LanternaPlayer
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.lanterna.personal.ios
+        TARGETED_DEVICE_FAMILY: "1,2"
+    info:
+      path: Apps/iOS/Info.plist
+      properties:
+        CFBundleDisplayName: Lanterna
+        UILaunchScreen: {}
+        UIBackgroundModes: [audio]
+        NSLocalNetworkUsageDescription: Lanterna pairs with your Apple TV and plays from servers on your home network.
+        NSBonjourServices: [_lanterna-pair._tcp]
+        NSCameraUsageDescription: Lanterna scans the pairing code shown on your Apple TV.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+
+  Lanterna-tvOS:
+    type: application
+    platform: tvOS
+    sources:
+      - Apps/Shared
+      - Apps/tvOS
+    dependencies:
+      - package: LanternaKit
+      - package: LanternaPlayer
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.lanterna.personal.tvos
+    info:
+      path: Apps/tvOS/Info.plist
+      properties:
+        CFBundleDisplayName: Lanterna
+        UILaunchScreen: {}
+        UIBackgroundModes: [audio]
+        NSLocalNetworkUsageDescription: Lanterna pairs with your iPhone and plays from servers on your home network.
+        NSBonjourServices: [_lanterna-pair._tcp]
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+
+  LanternaUITests-tvOS:
+    type: bundle.ui-testing
+    platform: tvOS
+    sources:
+      - Tests/UITests-tvOS
+    dependencies:
+      - target: Lanterna-tvOS
+
+schemes:
+  Lanterna-iOS:
+    build:
+      targets:
+        Lanterna-iOS: all
+  Lanterna-tvOS:
+    build:
+      targets:
+        Lanterna-tvOS: all
+    test:
+      targets:
+        - LanternaUITests-tvOS

@@ -1,0 +1,119 @@
+feature,area,priority,original,clone,notes
+AIOStreams addon source (manifest catalog meta stream subtitles),sources,must,retired,no,Steering must-have. Prism had stream Providers then retired them; URL in Keychain only
+TorBox library (torrents usenet web downloads),sources,must,no,no,Steering must-have. iPhone and tvOS; TMDB-matched
+TorBox cached-release check on stream cards,sources,must,yes,no,Prism showed a green check when cached; Lanterna gets it from AIOStreams/TorBox
+Jellyfin source over Tailscale via HTTPS,sources,must,yes,no,TMDB-first matching by ProviderIds; title+year fallback stays unmatched if ambiguous
+MediaSource protocol behind every source,sources,must,no,no,CLAUDE.md architecture; Prism has curated per-server clients
+Jellyfin remote address fallback,sources,should,yes,no,Try primary then remote automatically
+Jellyfin playback progress reporting,sources,should,yes,no,Sessions/Playing
+Jellyfin trickplay thumbnails for scrub,sources,could,yes,no,
+Server badge on posters for owned titles,sources,should,yes,no,
+Media Library browse (own files only),library,should,yes,no,Sort Title Year Recently Added
+PlaybackRouter with two engines (A remux to HLS; C FFmpeg fallback),player,must,no,no,Steering must-have. Log every decision with the probe result
+Stream probe before play (container codecs DV profile audio subs),player,must,yes,no,Prism probes to set display criteria
+Engine A: DV P5 and P8.x stream copy with DV mode switch,player,must,yes,no,Highest-risk item; verify on real Apple TV
+Engine A: HDR10 and HLG with mode switch,player,must,yes,no,
+Engine A: EAC3 Atmos copy,player,must,yes,no,
+Engine A: DTS DTS-HD TrueHD transcode to EAC3 5.1,player,must,partial,no,Prism claims TrueHD Atmos kept; Lanterna accepts losing objects. Record in P0
+Engine A: SRT and ASS to WebVTT renditions,player,must,yes,no,
+Engine A: native tvOS transport bar info panel chapters Siri rewind scrub thumbnails,player,must,yes,no,AVPlayerViewController
+Engine A: frame-rate and dynamic-range matching,player,must,yes,no,Wait for mode switch before first frame
+Engine C: Hi10P AV1 VC-1 PGS and probe failures,player,must,yes,no,Prism plays these in its own engine
+Engine C: Now Playing display criteria PiP and native-like transport by hand,player,must,no,no,
+PGS selection reroutes A to C at current position,player,must,no,no,
+DV Profile 7 to 8.1 metadata rewrite,player,could,yes,no,Prism does this frame by frame; not in Lanterna plan; add a P7 file to P0 corpus
+Resume from saved position (never 0:00),player,must,yes,no,Prism shipped several fixes for this
+Skip Intro button from server markers,player,should,yes,no,Jellyfin segment markers; no Prism database
+Recap skip,player,could,yes,no,
+Up Next countdown card and auto-play next episode,player,must,yes,no,Configurable 15 to 90 s before end
+Pre-resolve next episode stream near end,player,should,yes,no,
+Audio and subtitle track switching in player,player,must,yes,no,Grouped by language; preferred first
+Default audio keeps file's own track; skip commentary and AD,player,should,yes,no,
+Forced subtitles auto-select,player,should,yes,no,Metadata only
+Subtitle appearance (font size delay position),player,should,yes,no,
+External subtitles from AIOStreams subtitle resource,player,should,partial,no,Prism uses OpenSubtitles and SubDL
+Playback speed 0.5x to 2x,player,could,yes,no,
+Stats for nerds overlay,player,could,yes,no,Useful during P0
+Quiet reconnect on brief network drop,player,should,yes,no,
+Now Playing and remote fast-forward and rewind commands,player,must,yes,no,Engine A gets most of this free
+PiP on iPhone,player,should,yes,no,
+AirPlay from iPhone,player,could,yes,no,
+Shazam soundtrack recognition,player,skip,yes,skip,Not needed
+AI on-device subtitles,player,skip,yes,skip,Not needed
+External player handoff (Infuse VLC),player,could,yes,no,
+Stream picker grouped by source with badge strip,streams,must,yes,no,Resolution HDR DV audio Atmos size release group
+Auto-select stream with progress overlay,streams,must,yes,no,Checking n of m sources
+Stream filters requirements and sort,streams,should,yes,no,Resolution DV Atmos size
+Source order setting,streams,should,yes,no,
+Unavailable streams labelled and excluded from auto-select,streams,should,yes,no,
+Failing source cooldown,streams,should,yes,no,
+Quick Play from Continue Watching,streams,must,yes,no,
+Copy stream URL,streams,could,yes,no,Must redact in logs
+Home with Continue Watching and shelves (tvOS),home,must,yes,no,
+Home with Continue Watching and shelves (iPhone),home,must,yes,no,
+Hero carousel (optional),home,should,yes,no,
+Custom shelves from filters (genre year rating language),home,should,yes,no,Cap 20
+Shelves from public TMDB Trakt MDBList Letterboxd lists,home,could,yes,no,Trakt lists first
+Showcases and folders with artwork,home,skip,yes,skip,Not needed for one owner
+See All grid with filter and sort,home,should,yes,no,tvOS ends every shelf with See All
+Automatic personalized Home,home,skip,yes,skip,
+Movie detail page,detail,must,yes,no,
+Show detail with season picker and episodes,detail,must,yes,no,
+Smart Resume Play on show detail,detail,must,yes,no,
+Trailers row,detail,should,yes,no,TMDB video keys; no Prism resolver
+Cast row and person page,detail,should,yes,no,
+Ratings strip and reviews,detail,could,yes,no,
+Mark watched / mark up to here,detail,should,yes,no,
+Thumbs up down and personal ratings,detail,could,yes,no,
+Context menus on posters,detail,should,yes,no,Long-press on tvOS
+Parents Guide and Ask Prism AI,detail,skip,yes,skip,
+Search with Movies Shows Cast rows,search,must,yes,no,
+Search history and genre browse grid,search,should,yes,no,
+AI natural-language search and AI shelves,search,skip,yes,skip,
+Library: watchlist favorites history,library,must,yes,no,
+Coming Soon (14 days),library,should,yes,no,
+Custom lists editable (Trakt lists),library,could,yes,no,
+Downloads for offline (iPhone),library,could,yes,no,
+Release notifications,library,could,yes,no,Local only; no push entitlement
+Trakt device-code login on Apple TV,sync,must,yes,no,
+Trakt sync: history watchlist continue watching,sync,must,yes,no,Single sync source
+Trakt scrobble start pause stop,sync,must,yes,no,
+Cross-device resume within 10 s,sync,must,no,no,P5 gate
+Cached Continue Watching shown at cold launch,sync,should,yes,no,
+Continue Watching remove and hidden-shows restore,sync,should,yes,no,
+iCloud library sync,sync,skip,yes,skip,Free Personal Team cannot use iCloud
+SIMKL and MDBList sync,sync,skip,yes,skip,
+Your Services: manual declaration of subscribed services,services,must,yes,no,No subscription API exists; never pretend there is
+Your Services: TMDB watch-provider lookup archive per region,services,must,yes,no,Cached locally with fetched_at
+Your Services: Open in service deep link per title,services,must,yes,no,Per-service link level: episode title show or app only
+Your Services cards in stream picker and no-streams screen,services,must,yes,no,
+Watch region setting,services,should,yes,no,
+QR pairing iPhone to Apple TV for credentials,pairing,must,no,no,Replaces Prism Web Setup; local network only
+First-run setup on Apple TV without typing,pairing,must,yes,no,QR pairing or Trakt device code
+iPhone remote control of Apple TV playback,pairing,could,yes,no,Prism Companion Remote
+Play on Apple TV from iPhone,pairing,could,yes,no,
+Settings root,settings,must,yes,no,
+Settings search,settings,could,yes,no,
+Diagnostics: routing log and source health,settings,should,partial,no,Prism has media-server diagnostics
+Secrets in Keychain only and redacted in logs,settings,must,yes,no,
+Share and backup settings export,settings,skip,yes,skip,
+Content restrictions and biometric lock,settings,skip,yes,skip,
+Profiles and PINs,settings,skip,yes,skip,One owner
+tvOS focus: scale shadow parallax with clearance,tvos,must,yes,no,Amber focus ring
+tvOS focus: restore focused row after detail,tvos,must,yes,no,
+tvOS focus: Menu returns to top not out of app,tvos,must,yes,no,
+tvOS focus: down from show artwork lands on current episode,tvos,should,yes,no,
+tvOS focus: cancel stream search restores focus,tvos,should,yes,no,
+tvOS top tab bar navigation,tvos,must,yes,no,
+iPhone tab bar with search role,ios,must,yes,no,
+Liquid Glass chrome,ios,should,yes,no,
+OLED true black mode,ios,could,yes,no,Dark-first anyway
+Plex Emby Silo servers,sources,skip,yes,skip,Not in source list
+WebDAV network shares,sources,skip,yes,skip,
+Live TV M3U and Xtream,sources,skip,yes,skip,
+Seerr content requests,sources,skip,yes,skip,
+Top Shelf extension,platform,skip,yes,skip,No extensions in v1
+Siri Shortcuts and Spotlight,platform,skip,yes,skip,
+Mac app,platform,skip,yes,skip,Out of scope per steering
+iPad app,platform,skip,yes,skip,Out of scope per steering
+Subscription paywall and trial,platform,skip,yes,skip,Personal use
