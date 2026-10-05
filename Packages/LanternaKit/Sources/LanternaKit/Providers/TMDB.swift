@@ -1,7 +1,10 @@
 import Foundation
 
 public enum TMDBImage {
-    public enum Size: String { case poster = "w500", backdrop = "w1280", still = "w780", profile = "w185", original = "original", providerLogo = "w92" }
+    public enum Size: String { case poster = "w500", backdrop = "w1280", still = "w780", profile = "w185", original = "original", providerLogo = "w92"
+        /// The 780 px width, for full-bleed posters.
+        public static var posterLarge: Size { .still }
+    }
     public static func url(_ path: String?, _ size: Size) -> URL? {
         guard let path, !path.isEmpty else { return nil }
         return URL(string: "https://image.tmdb.org/t/p/\(size.rawValue)\(path)")

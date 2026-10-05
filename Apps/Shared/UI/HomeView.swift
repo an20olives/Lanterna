@@ -158,6 +158,9 @@ struct HomeView: View {
                     HeroCarousel(items: model.heroItems, scope: homeScope, onDetails: { path.append($0) }, onPlay: { item in
                         Task { await flow.start(ref: item.ref, displayTitle: item.title, forcePicker: false, env: env) }
                     })
+                    #if os(iOS)
+                    .ignoresSafeArea(.container, edges: .top)
+                    #endif
                 }
                 if !model.continueItems.isEmpty { continueRow }
                 ForEach(model.shelves) { shelf in
@@ -165,8 +168,17 @@ struct HomeView: View {
                 }
                 if model.isLoading { ProgressView().frame(maxWidth: .infinity) }
             }
-            .padding(.vertical, 20)
+            .padding(.top, heroOnTop ? 0 : 20)
+            .padding(.bottom, 20)
         }
+    }
+
+    private var heroOnTop: Bool {
+        #if os(iOS)
+        env.config.heroEnabled && !model.heroItems.isEmpty
+        #else
+        false
+        #endif
     }
 
     private var continueRow: some View {
@@ -178,16 +190,7 @@ struct HomeView: View {
                         Button {
                             Task { await flow.start(ref: item.ref, displayTitle: item.summary.title, forcePicker: false, env: env) }
                         } label: {
-                            VStack(alignment: .leading, spacing: 8) {
-                                RemoteImage(url: TMDBImage.url(item.summary.backdropPath ?? item.summary.posterPath, .backdrop), placeholder: item.summary.title)
-                                    .frame(width: Metrics.still.width, height: Metrics.still.height)
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                                    .overlay(alignment: .bottom) { ProgressBar(fraction: item.snapshot.fraction).padding(10) }
-                                MarqueeText(text: item.summary.title)
-                                Text([item.subtitle, remaining(item.snapshot)].compactMap { $0 }.joined(separator: " · "))
-                                    .font(.caption2).foregroundStyle(.secondary)
-                            }
-                            .frame(width: Metrics.still.width, alignment: .leading)
+                            continueCard(item)
                         }
                         .cardButtonStyle()
                         .accessibilityIdentifier("continue.\(item.id)")
@@ -208,6 +211,25 @@ struct HomeView: View {
             .scrollClipDisabled()
         }
         .focusSectionIfTV()
+    }
+
+    /// Wide still with the title, episode and time left on the picture, and the progress bar along the bottom edge.
+    private func continueCard(_ item: ContinueItem) -> some View {
+        let width = Metrics.still.width
+        let height = Metrics.still.height
+        return Color.black.frame(width: width, height: height)
+            .overlay { RemoteImage(url: TMDBImage.url(item.summary.backdropPath ?? item.summary.posterPath, .backdrop), placeholder: item.summary.title) }
+            .overlay(LinearGradient(colors: [.clear, .black.opacity(0.85)], startPoint: .center, endPoint: .bottom))
+            .overlay(alignment: .bottomLeading) {
+                VStack(alignment: .leading, spacing: 2) {
+                    MarqueeText(text: item.summary.title, font: .callout.weight(.semibold), color: .white)
+                    Text([item.subtitle, remaining(item.snapshot)].compactMap { $0 }.joined(separator: "  ·  "))
+                        .font(.caption2).foregroundStyle(.white.opacity(0.75)).lineLimit(1)
+                }
+                .padding(.horizontal, 12).padding(.bottom, 16)
+            }
+            .overlay(alignment: .bottom) { ProgressBar(fraction: item.snapshot.fraction).padding(.horizontal, 12).padding(.bottom, 8) }
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private func remaining(_ snapshot: ProgressSnapshot) -> String? {

@@ -11,7 +11,7 @@ enum Metrics {
     static let rowPadding: CGFloat = 24
     #else
     static let poster = CGSize(width: 120, height: 180)
-    static let still = CGSize(width: 200, height: 113)
+    static let still = CGSize(width: 270, height: 152)
     static let gutter: CGFloat = 16
     static let rowSpacing: CGFloat = 12
     static let sectionSpacing: CGFloat = 20
@@ -37,21 +37,27 @@ extension View {
     }
 }
 
+/// An image that fills whatever space it is given and never asks for more, so a wide backdrop cannot push its
+/// container wider than the screen.
 struct RemoteImage: View {
     let url: URL?
     let placeholder: String
 
     var body: some View {
-        AsyncImage(url: url) { phase in
-            switch phase {
-            case .success(let image): image.resizable().aspectRatio(contentMode: .fill)
-            default:
-                ZStack {
-                    LinearGradient(colors: [Color(white: 0.16), Color(white: 0.09)], startPoint: .top, endPoint: .bottom)
-                    Text(placeholder).font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center).padding(8)
+        Color.clear
+            .overlay {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image): image.resizable().aspectRatio(contentMode: .fill)
+                    default:
+                        ZStack {
+                            LinearGradient(colors: [Color(white: 0.16), Color(white: 0.09)], startPoint: .top, endPoint: .bottom)
+                            Text(placeholder).font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center).padding(8)
+                        }
+                    }
                 }
             }
-        }
+            .clipped()
     }
 }
 

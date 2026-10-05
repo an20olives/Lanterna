@@ -78,23 +78,26 @@ struct DetailView: View {
     private var ref: TitleRef { summary.ref }
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            backdrop
-            ScrollView {
-                VStack(alignment: .leading, spacing: Metrics.sectionSpacing) {
-                    header
-                    actions
-                    if ref.kind == .show { episodesSection }
-                    if !model.offers.isEmpty { providersRow }
-                    if model.trailerURL == nil, let trailers = model.detail?.trailers, !trailers.isEmpty { trailersRow(trailers) }
-                    if let cast = model.detail?.cast, !cast.isEmpty { castRow(cast) }
-                }
-                .padding(.horizontal, Metrics.gutter)
-                .padding(.vertical, 30)
+        ScrollView {
+            VStack(alignment: .leading, spacing: Metrics.sectionSpacing) {
+                header
+                actions
+                if ref.kind == .show { episodesSection }
+                if !model.offers.isEmpty { providersRow }
+                if model.trailerURL == nil, let trailers = model.detail?.trailers, !trailers.isEmpty { trailersRow(trailers) }
+                if let cast = model.detail?.cast, !cast.isEmpty { castRow(cast) }
             }
+            .padding(.horizontal, Metrics.gutter)
+            .padding(.vertical, 30)
         }
+        .background { backdrop }
         .task { await model.load(summary: summary, env: env) }
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("")
+        #else
         .navigationTitle(summary.title)
+        #endif
         #if os(tvOS)
         .toolbar(.hidden, for: .navigationBar)
         #endif
@@ -128,6 +131,65 @@ struct DetailView: View {
     private var titleText: some View { Text(summary.title).font(.largeTitle.bold()) }
 
     private var actions: some View {
+        #if os(iOS)
+        phoneActions
+        #else
+        tvActions
+        #endif
+    }
+
+    #if os(iOS)
+    private var phoneActions: some View {
+        HStack(spacing: 12) {
+            Button { Task { await play() } } label: {
+                Label(playLabel, systemImage: "play.fill")
+                    .font(.headline)
+                    .padding(.horizontal, 22).padding(.vertical, 12)
+                    .background(Capsule().fill(.white))
+                    .foregroundStyle(.black)
+            }
+            .accessibilityIdentifier("detail.play")
+            roundButton(model.inWatchlist ? "checkmark" : "plus", label: model.inWatchlist ? "Remove from watchlist" : "Add to watchlist") {
+                Task { await model.toggle(.watchlist, ref: ref, env: env) }
+            }
+            roundButton(model.isFavorite ? "heart.fill" : "heart", label: "Favorite") {
+                Task { await model.toggle(.favorite, ref: ref, env: env) }
+            }
+            if let trailer = model.trailerURL {
+                roundButton("film", label: "Trailer") {
+                    Task { await playback.playTrailer(url: trailer, title: summary.title, ref: ref, env: env) }
+                }
+                .accessibilityIdentifier("detail.trailer")
+            }
+            Menu {
+                if ref.kind == .movie || model.resume != nil {
+                    Button("Choose Stream", systemImage: "list.bullet") { Task { await play(forcePicker: true) } }
+                }
+                if ref.kind == .movie {
+                    Button("Mark Watched", systemImage: "eye") { Task { await model.markWatched([ref], runtimeMinutes: model.detail?.runtimeMinutes, env: env) } }
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(.white.opacity(0.18)))
+                    .foregroundStyle(.white)
+            }
+            .accessibilityLabel("More")
+        }
+    }
+
+    private func roundButton(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .frame(width: 44, height: 44)
+                .background(Circle().fill(.white.opacity(0.18)))
+                .foregroundStyle(.white)
+        }
+        .accessibilityLabel(label)
+    }
+    #endif
+
+    private var tvActions: some View {
         HStack(spacing: 20) {
             Button {
                 Task { await play() }

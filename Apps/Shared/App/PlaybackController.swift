@@ -102,8 +102,24 @@ final class PlaybackController {
             if request.persists, case .jellyfin(let itemID, _) = request.candidate.locatorHint, let jellyfin = source as? JellyfinSource {
                 segments = await jellyfin.segments(itemID: itemID)
             }
-            let prepared = try await router.prepare(url: locator.url, context: context, externalSubtitles: await subtitles)
-            self.prepared = prepared
+            let external = await subtitles
+            var current = locator
+            var prepared = try await router.prepare(url: current.url, context: context, externalSubtitles: external)
+            // A dead CDN node answers "could not connect". A fresh link can land on another node, so try again before giving up.
+            var attempts = 0
+            while prepared.record.probe == nil, Self.isNetworkFailure(prepared.record.failure), attempts < 2 {
+                attempts += 1
+                try? await Task.sleep(for: .seconds(1.5))
+                if let source, request.directURL == nil, let fresh = try? await source.resolve(request.candidate.locatorHint) { current = fresh }
+                prepared = try await router.prepare(url: current.url, context: context, externalSubtitles: external)
+            }
+            if prepared.record.probe == nil, Self.isNetworkFailure(prepared.record.failure) {
+                // Engine C would hit the same wall, so say what happened instead of opening a second failure.
+                self.prepared = prepared
+                await logRoute(prepared, outcome: "unreachable")
+                errorMessage = "Could not reach the stream server. Try another stream, or try again in a moment."
+                return
+            }
             await logRoute(prepared, outcome: "opening")
             // A failed probe with no playable route is reported, not played blind.
             if prepared.record.probe == nil, prepared.record.failure != nil, prepared.decision.engine == .c, prepared.record.decision.reasons.contains(.probeFailed) {
@@ -117,6 +133,23 @@ final class PlaybackController {
         } catch {
             errorMessage = "Could not open that stream."
         }
+    }
+
+    /// Connection-level failures (could not connect, timed out, offline, connection lost) in an error string.
+    static func isNetworkFailure(_ failure: String?) -> Bool {
+        guard let failure else { return false }
+        return ["Code=-1004", "Code=-1001", "Code=-1009", "Code=-1005", "Code=-1003"].contains { failure.contains($0) }
+    }
+
+    /// One readable line for the routing log instead of a raw NSError dump.
+    static func shortFailure(_ failure: String?) -> String? {
+        guard let failure else { return nil }
+        if failure.contains("Code=-1004") { return "Could not connect to the stream server." }
+        if failure.contains("Code=-1001") { return "The stream server took too long to answer." }
+        if failure.contains("Code=-1009") { return "No internet connection." }
+        if failure.contains("Code=-1005") { return "The connection to the stream server dropped." }
+        if failure.contains("Code=-1003") { return "The stream server's address could not be found." }
+        return failure.count > 160 ? String(failure.prefix(160)) + "…" : failure
     }
 
     private func attach(_ newSession: PlaybackSession) {
@@ -311,6 +344,6 @@ extension CacheStore {
         let data = (try? JSONEncoder().encode(record.probe)) ?? Data()
         await recordProbe(streamID: streamID, titleKey: titleKey, probeJSON: data, engine: record.decision.engine.rawValue,
                           reasons: record.decision.reasons.map(\.rawValue), outcome: outcome,
-                          failure: record.failure.map { Redactor.text($0) })
+                          failure: PlaybackController.shortFailure(record.failure).map { Redactor.text($0) })
     }
 }
