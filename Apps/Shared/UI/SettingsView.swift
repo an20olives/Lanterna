@@ -41,7 +41,7 @@ struct SettingsView: View {
             i("Pair \(env.deviceName == "iPhone" ? "Apple TV" : "iPhone")", "Sources", .pairing, ["qr code", "scan", "send credentials", "setup without typing"]),
             i("Streams", "Playback", .streams, ["sort", "minimum resolution", "dolby vision", "atmos", "size", "source order", "auto-select", "prefer library"]),
             i("Video player", "Playback", .player, ["audio dts truehd", "subtitles", "forced", "next episode", "skip intro"]),
-            i("Subtitle size and colour", "Playback", .player, ["appearance", "font", "background", "delay"]),
+            i("Subtitle size and colour", "Playback", .player, ["appearance", "font", "background", "delay", "position", "higher", "raise"]),
             i("Skip intro", "Playback", .player, ["recap credits jellyfin segments"]),
             i("Home screen", "Playback", .home, ["shelves", "rows", "featured strip", "hero", "carousel", "add shelf", "reorder"]),
             i("Trakt", "Account", .trakt, ["sign in", "sync", "scrobble", "watchlist", "history", "client id"]),
@@ -417,6 +417,10 @@ struct PlayerSettingsView: View {
                 .settingsPicker()
                 Picker("Colour", selection: Binding(get: { env.config.playerPrefs.subtitleColor }, set: { v in env.updateConfig { $0.playerPrefs.subtitleColor = v } })) {
                     Text("White").tag(PlayerPrefs.SubtitleColor.white); Text("Yellow").tag(PlayerPrefs.SubtitleColor.yellow)
+                }
+                .settingsPicker()
+                Picker("Position", selection: Binding(get: { env.config.playerPrefs.subtitleRaisePercent }, set: { v in env.updateConfig { $0.playerPrefs.subtitleRaisePercent = v } })) {
+                    Text("Bottom").tag(0); Text("A little higher").tag(8); Text("Higher").tag(16); Text("Much higher").tag(26)
                 }
                 .settingsPicker()
                 Toggle("Dark background", isOn: Binding(get: { env.config.playerPrefs.subtitleBackground }, set: { v in env.updateConfig { $0.playerPrefs.subtitleBackground = v } }))

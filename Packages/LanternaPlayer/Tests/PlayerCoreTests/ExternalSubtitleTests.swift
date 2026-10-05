@@ -82,3 +82,14 @@ struct ExternalSubtitleTests {
         #expect(appearance.backgroundARGB == nil)
     }
 }
+
+struct SubtitlePositionTests {
+    @Test func defaultKeepsThePlayersOwnPosition() {
+        #expect(SubtitleAppearance().linePositionPercent == nil)
+    }
+
+    @Test func raisingMovesTheLineUpAndStopsBeforeMidScreen() {
+        #expect(SubtitleAppearance(raisePercent: 16).linePositionPercent == 74)
+        #expect(SubtitleAppearance(raisePercent: 80).linePositionPercent == 40)
+    }
+}

@@ -37,8 +37,11 @@ public struct SubtitleAppearance: Sendable, Equatable {
     public var background = false
     /// Engine C only.
     public var delaySeconds = 0.0
+    /// Percent of the picture height to lift subtitles off the bottom edge. 0 leaves the player's default.
+    public var raisePercent = 0
 
-    public init(sizePercent: Int = 100, color: Color = .white, background: Bool = false, delaySeconds: Double = 0) {
+    public init(sizePercent: Int = 100, color: Color = .white, background: Bool = false, delaySeconds: Double = 0, raisePercent: Int = 0) {
+        self.raisePercent = raisePercent
         self.sizePercent = sizePercent
         self.color = color
         self.background = background
@@ -46,6 +49,9 @@ public struct SubtitleAppearance: Sendable, Equatable {
     }
 
     public var relativeFontSize: Int { sizePercent }
+
+    /// Line position for CoreMedia text markup: 0 is the top, 100 the bottom. Nil keeps the default.
+    public var linePositionPercent: Int? { raisePercent > 0 ? max(40, 90 - raisePercent) : nil }
 
     /// Alpha, red, green, blue in 0...1, the layout CoreMedia text markup expects.
     public var foregroundARGB: [Double] {

@@ -6,7 +6,7 @@ extension AppEnvironment {
     var subtitleAppearance: SubtitleAppearance {
         let prefs = config.playerPrefs
         return SubtitleAppearance(sizePercent: prefs.subtitleSizePercent, color: prefs.subtitleColor == .yellow ? .yellow : .white,
-                                  background: prefs.subtitleBackground, delaySeconds: prefs.subtitleDelaySeconds)
+                                  background: prefs.subtitleBackground, delaySeconds: prefs.subtitleDelaySeconds, raisePercent: prefs.subtitleRaisePercent)
     }
 
     /// Downloads a few subtitle files in the owner's languages from sources that offer them. Never blocks playback for long.

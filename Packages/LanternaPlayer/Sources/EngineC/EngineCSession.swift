@@ -43,6 +43,7 @@ public final class EngineCSession: PlaybackSession {
         SubtitleModel.textColor = appearance.color == .yellow ? .yellow : .white
         SubtitleModel.textBackgroundColor = appearance.background ? Color.black.opacity(0.6) : .clear
         coordinator.subtitleModel.subtitleDelay = appearance.delaySeconds
+        SubtitleModel.textPosition.verticalMargin = 10 + CGFloat(appearance.raisePercent) * 9
         for external in externalSubtitles {
             guard let source = external.sourceURL else { continue }
             coordinator.subtitleModel.addSubtitle(info: URLSubtitleInfo(subtitleID: external.id, name: external.label, url: source))

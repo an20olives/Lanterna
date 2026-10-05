@@ -135,6 +135,8 @@ public struct PlayerPrefs: Codable, Sendable, Hashable {
     public var subtitleBackground = false
     /// Honoured by Engine C only; HLS text tracks cannot be shifted.
     public var subtitleDelaySeconds = 0.0
+    /// How far to lift subtitles off the bottom edge, as a percent of the picture height. 0 is the player's default.
+    public var subtitleRaisePercent = 0
     public init() {}
 
     public init(from decoder: Decoder) throws {
@@ -151,6 +153,7 @@ public struct PlayerPrefs: Codable, Sendable, Hashable {
         subtitleColor = try c.decodeIfPresent(SubtitleColor.self, forKey: .subtitleColor) ?? d.subtitleColor
         subtitleBackground = try c.decodeIfPresent(Bool.self, forKey: .subtitleBackground) ?? d.subtitleBackground
         subtitleDelaySeconds = try c.decodeIfPresent(Double.self, forKey: .subtitleDelaySeconds) ?? d.subtitleDelaySeconds
+        subtitleRaisePercent = try c.decodeIfPresent(Int.self, forKey: .subtitleRaisePercent) ?? d.subtitleRaisePercent
     }
 }
 

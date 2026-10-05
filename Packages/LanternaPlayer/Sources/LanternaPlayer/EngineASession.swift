@@ -57,6 +57,7 @@ public final class EngineASession: NSObject, PlaybackSession {
             kCMTextMarkupAttribute_RelativeFontSize as String: appearance.relativeFontSize,
             kCMTextMarkupAttribute_ForegroundColorARGB as String: appearance.foregroundARGB,
         ]
+        if let line = appearance.linePositionPercent { attributes[kCMTextMarkupAttribute_OrthogonalLinePositionPercentageRelativeToWritingDirection as String] = line }
         if let background = appearance.backgroundARGB { attributes[kCMTextMarkupAttribute_BackgroundColorARGB as String] = background }
         if let rule = AVTextStyleRule(textMarkupAttributes: attributes) { item.textStyleRules = [rule] }
     }
