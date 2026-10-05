@@ -21,6 +21,15 @@ struct HomeScreenSettingsView: View {
         List {
             Section {
                 Toggle("Featured strip at the top", isOn: Binding(get: { env.config.heroEnabled }, set: { v in env.updateConfig { $0.heroEnabled = v } }))
+                #if !os(tvOS)
+                Toggle("Notify me about new episodes and releases", isOn: Binding(get: { env.config.notifyReleases }, set: { v in
+                    Task {
+                        if v, !(await ReleaseNotifier.requestPermission()) { return }
+                        env.updateConfig { $0.notifyReleases = v }
+                        await ReleaseNotifier.refresh(env: env)
+                    }
+                }))
+                #endif
             }
             Section("Shelves (\(env.effectiveShelves.count) of \(DeviceConfig.maxShelves))") {
                 ForEach(env.effectiveShelves) { shelf in

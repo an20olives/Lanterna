@@ -311,3 +311,13 @@ struct ExternalListTests {
         #expect(old.customLists.isEmpty)
     }
 }
+
+struct UpcomingReleaseTests {
+    @Test func showsAndMoviesReportFutureDatesOnly() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)       // 2027-01-15
+        #expect(TMDBClient.upcoming(isMovie: true, releaseDate: "2027-03-01", next: nil, now: now)?.label == "Release")
+        #expect(TMDBClient.upcoming(isMovie: true, releaseDate: "2020-03-01", next: nil, now: now) == nil)
+        #expect(TMDBClient.upcoming(isMovie: false, releaseDate: nil, next: ("2027-02-01", 2, 5), now: now)?.label == "S2 E5")
+        #expect(TMDBClient.upcoming(isMovie: false, releaseDate: nil, next: nil, now: now) == nil)
+    }
+}

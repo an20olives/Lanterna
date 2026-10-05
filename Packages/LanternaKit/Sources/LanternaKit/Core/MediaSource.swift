@@ -147,6 +147,16 @@ public struct EpisodeSummary: Hashable, Codable, Sendable, Identifiable {
     }
 }
 
+public struct UpcomingRelease: Hashable, Codable, Sendable {
+    public var date: Date
+    /// "S2 E5" for an episode, "Release" for a movie.
+    public var label: String
+    public init(date: Date, label: String) {
+        self.date = date
+        self.label = label
+    }
+}
+
 public struct TitleDetail: Hashable, Codable, Sendable {
     public var summary: TitleSummary
     public var tagline: String?
@@ -157,9 +167,12 @@ public struct TitleDetail: Hashable, Codable, Sendable {
     public var cast: [CastMember]
     public var trailers: [Trailer]
     public var seasons: [SeasonSummary]
+    /// Next episode air date for a show, or the release date for a movie not out yet. Drives release notifications.
+    public var upcoming: UpcomingRelease?
     public init(summary: TitleSummary, tagline: String? = nil, runtimeMinutes: Int? = nil, certification: String? = nil,
                 genres: [String] = [], logoPath: String? = nil, cast: [CastMember] = [], trailers: [Trailer] = [],
-                seasons: [SeasonSummary] = []) {
+                seasons: [SeasonSummary] = [], upcoming: UpcomingRelease? = nil) {
+        self.upcoming = upcoming
         self.summary = summary
         self.tagline = tagline
         self.runtimeMinutes = runtimeMinutes

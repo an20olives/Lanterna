@@ -70,7 +70,12 @@ struct AppRoot: View {
             }
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { sync.kick() }
+            if phase == .active {
+                sync.kick()
+                #if !os(tvOS)
+                Task { await ReleaseNotifier.refresh(env: env) }
+                #endif
+            }
         }
     }
 }

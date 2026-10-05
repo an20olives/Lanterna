@@ -168,6 +168,8 @@ public struct DeviceConfig: Codable, Sendable, Hashable {
     public var playerPrefs = PlayerPrefs()
     public var heroEnabled = true
     public var customLists: [CustomList] = []
+    /// Local notifications for new episodes and releases of watchlist and favourite titles. iPhone and Mac only.
+    public var notifyReleases = false
 
     public init() {}
 
@@ -182,6 +184,7 @@ public struct DeviceConfig: Codable, Sendable, Hashable {
         playerPrefs = try c.decodeIfPresent(PlayerPrefs.self, forKey: .playerPrefs) ?? PlayerPrefs()
         heroEnabled = try c.decodeIfPresent(Bool.self, forKey: .heroEnabled) ?? true
         customLists = try c.decodeIfPresent([CustomList].self, forKey: .customLists) ?? []
+        notifyReleases = try c.decodeIfPresent(Bool.self, forKey: .notifyReleases) ?? false
     }
 
     public func validated() -> DeviceConfig {

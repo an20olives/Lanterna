@@ -124,6 +124,8 @@ public struct TMDBClient: Sendable {
         let release_dates: ReleaseDates?
         let content_ratings: ContentRatings?
         let seasons: [Season]?
+        struct NextEpisode: Decodable { let air_date: String?; let season_number: Int; let episode_number: Int }
+        let next_episode_to_air: NextEpisode?
     }
 
     // MARK: Mapping
@@ -214,7 +216,17 @@ public struct TMDBClient: Sendable {
             logoPath: logo?.file_path,
             cast: (dto.credits?.cast ?? []).prefix(20).map { CastMember(id: $0.id, name: $0.name, character: $0.character, profilePath: $0.profile_path) },
             trailers: (dto.videos?.results ?? []).filter { $0.site == "YouTube" && $0.type == "Trailer" }.map { Trailer(youtubeKey: $0.key, name: $0.name) },
-            seasons: (dto.seasons ?? []).map { SeasonSummary(number: $0.season_number, name: $0.name, episodeCount: $0.episode_count, posterPath: $0.poster_path) })
+            seasons: (dto.seasons ?? []).map { SeasonSummary(number: $0.season_number, name: $0.name, episodeCount: $0.episode_count, posterPath: $0.poster_path) },
+            upcoming: Self.upcoming(isMovie: isMovie, releaseDate: dto.release_date, next: dto.next_episode_to_air.map { ($0.air_date, $0.season_number, $0.episode_number) }))
+    }
+
+    static func upcoming(isMovie: Bool, releaseDate: String?, next: (String?, Int, Int)?, now: Date = Date()) -> UpcomingRelease? {
+        if isMovie {
+            guard let date = date(releaseDate), date > now else { return nil }
+            return UpcomingRelease(date: date, label: "Release")
+        }
+        guard let next, let date = date(next.0), date > now.addingTimeInterval(-86_400) else { return nil }
+        return UpcomingRelease(date: date, label: "S\(next.1) E\(next.2)")
     }
 
     public func season(showID: Int, number: Int) async throws -> [EpisodeSummary] {
