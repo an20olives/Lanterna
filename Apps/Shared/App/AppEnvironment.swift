@@ -65,6 +65,8 @@ final class AppEnvironment {
             config = fresh
             return
         }
+        // Lets a UI test turn the featured strip back on without wiping the Keychain.
+        if ProcessInfo.processInfo.arguments.contains("-uitest-hero") { config.heroEnabled = true }
         func seed(_ plistKey: String, _ key: KeychainKey, prefix: String = "") {
             guard (try? keychain.string(for: key)) ?? nil == nil,
                   let value = Bundle.main.object(forInfoDictionaryKey: plistKey) as? String, !value.isEmpty, !value.hasPrefix("$(") else { return }
