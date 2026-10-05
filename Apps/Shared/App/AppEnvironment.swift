@@ -25,6 +25,9 @@ final class AppEnvironment {
     /// Bumps whenever sources or credentials change so views reload.
     var revision = 0
     let itunes = ITunesPreviewClient()
+    #if !os(tvOS)
+    let downloads = DownloadManager()
+    #endif
     var lastSync: Date?
     var deviceName: String = "Apple TV"
     /// tvOS sets this to show the P0 player lab from Settings.

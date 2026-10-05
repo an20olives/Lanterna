@@ -110,10 +110,12 @@ public final class RemuxSession: @unchecked Sendable {
     /// Rendition ids from 1000 up, clear of container stream indices.
     private let externalSubtitles: [ExternalSubtitle]
     private let thumbnails: ThumbnailTrack?
+    private let companion: LocalFileServer?
     static let externalBase = 1000
 
     public init(source: RemoteByteSource, probe: ProbeResult, decision: RoutingDecision, options: Options = Options(),
-                externalSubtitles: [ExternalSubtitle] = [], thumbnails: ThumbnailTrack? = nil) throws {
+                externalSubtitles: [ExternalSubtitle] = [], thumbnails: ThumbnailTrack? = nil, companion: LocalFileServer? = nil) throws {
+        self.companion = companion
         self.externalSubtitles = externalSubtitles
         self.thumbnails = thumbnails
         guard source.rangeSupported else { throw EngineAError("Engine A needs Range support") }
@@ -147,6 +149,7 @@ public final class RemuxSession: @unchecked Sendable {
     public func stop() {
         server?.stop()
         server = nil
+        companion?.stop()
     }
 
     public func stats() async -> RemuxStats {

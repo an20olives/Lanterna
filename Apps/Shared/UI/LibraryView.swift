@@ -38,6 +38,9 @@ struct LibraryView: View {
                         NavigationLink(destination: MediaLibraryView()) { Label("Media Library", systemImage: "externaldrive") }
                             .padding(.horizontal, Metrics.gutter)
                     }
+                    #if !os(tvOS)
+                    DownloadsSection(path: $path)
+                    #endif
                     section("Watchlist", model.watchlist, empty: "Add titles with the plus button on a detail page.")
                     section("Favorites", model.favorites, empty: "Tap the heart on a detail page.")
                     section("History", model.history, empty: "Finished titles show up here.")
@@ -186,3 +189,55 @@ struct MediaLibraryView: View {
         return .movie(tmdbID: -(abs(hash) % 1_000_000_000) - 1, imdbID: nil)
     }
 }
+
+#if !os(tvOS)
+/// Offline copies: progress while they download, play and remove when they are done.
+struct DownloadsSection: View {
+    @Environment(AppEnvironment.self) private var env
+    @Environment(PlayFlow.self) private var flow
+    @Binding var path: [TitleSummary]
+
+    var body: some View {
+        if !env.downloads.records.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Downloads").font(.title3.bold())
+                ForEach(env.downloads.records) { record in
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(record.title).lineLimit(1)
+                            switch record.state {
+                            case .downloading:
+                                ProgressView(value: record.fraction)
+                                Text(Self.sizeText(record)).font(.caption).foregroundStyle(.secondary)
+                            case .done:
+                                Text(ByteCountFormatter.string(fromByteCount: record.totalBytes, countStyle: .file) + " · on this device")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            case .failed:
+                                Text(record.errorText ?? "The download failed.").font(.caption).foregroundStyle(.orange)
+                            }
+                        }
+                        Spacer()
+                        if record.state == .done, let ref = TitleRef(key: record.id) {
+                            Button { Task { await flow.start(ref: ref, displayTitle: record.title, forcePicker: false, env: env) } } label: {
+                                Image(systemName: "play.fill")
+                            }
+                            .accessibilityLabel("Play \(record.title)")
+                        }
+                        Button(role: .destructive) {
+                            record.state == .downloading ? env.downloads.cancel(record.id) : env.downloads.delete(record.id)
+                        } label: { Image(systemName: record.state == .downloading ? "xmark" : "trash") }
+                        .accessibilityLabel(record.state == .downloading ? "Cancel download" : "Delete download")
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+            .padding(.horizontal, Metrics.gutter)
+        }
+    }
+
+    static func sizeText(_ record: DownloadRecord) -> String {
+        guard record.totalBytes > 0 else { return "Starting…" }
+        return ByteCountFormatter.string(fromByteCount: record.receivedBytes, countStyle: .file) + " of " + ByteCountFormatter.string(fromByteCount: record.totalBytes, countStyle: .file)
+    }
+}
+#endif

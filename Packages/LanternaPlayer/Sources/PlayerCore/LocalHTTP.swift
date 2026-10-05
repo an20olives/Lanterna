@@ -106,6 +106,7 @@ public struct HTTPResponse: Sendable {
         case 200: "OK"
         case 206: "Partial Content"
         case 404: "Not Found"
+        case 416: "Range Not Satisfiable"
         case 503: "Service Unavailable"
         default: "Internal Server Error"
         }

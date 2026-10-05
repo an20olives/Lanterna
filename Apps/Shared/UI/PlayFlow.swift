@@ -24,14 +24,30 @@ final class PlayFlow {
     var groups: [(kind: SourceKind, items: [StreamCandidate])] = []
     var failures: [String] = []
     var heading = ""
+    /// When true the next chosen stream is downloaded instead of played.
+    var downloadOnly = false
+    @ObservationIgnored var posterPath: String?
     @ObservationIgnored var pending: Pending?
     @ObservationIgnored weak var playback: PlaybackController?
     @ObservationIgnored private var searchTask: Task<Void, Never>?
 
     var isPresented: Bool { phase != .idle }
 
-    func start(ref: TitleRef, displayTitle: String, forcePicker: Bool, env: AppEnvironment) async {
+    func start(ref: TitleRef, displayTitle: String, forcePicker: Bool, download: Bool = false, posterPath: String? = nil, env: AppEnvironment) async {
         guard let playback else { return }
+        downloadOnly = download
+        self.posterPath = posterPath
+        #if !os(tvOS)
+        // A finished download plays without a stream search.
+        if !download, !forcePicker, let file = env.downloads.fileURL(for: ref.key) {
+            let candidate = StreamCandidate(id: "download:\(ref.key)", sourceID: AppEnvironment.sourceID(.tmdb), sourceKind: .tmdb, title: ref,
+                                            displayName: "Downloaded", locatorHint: .url(file))
+            let progress = await env.progress.progress(for: ref.key)
+            let resume = (progress.map { !$0.isCompleted && $0.fraction < 0.95 && $0.positionSeconds > 5 } ?? false) ? (progress?.positionSeconds ?? 0) : 0
+            await playback.play(.init(candidate: candidate, ref: ref, displayTitle: displayTitle, startAt: resume, next: nil, directURL: file), env: env)
+            return
+        }
+        #endif
         searchTask?.cancel()
         heading = displayTitle
         failures = []
@@ -54,7 +70,7 @@ final class PlayFlow {
         let usable = outcome.candidates
         failures = outcome.failures.values.map(Self.describe)
 
-        if prefs.autoSelect, !forcePicker, let pick = StreamSelector.autoSelect(usable, prefs: prefs, remembered: progress?.lastStreamID) {
+        if prefs.autoSelect, !forcePicker, !download, let pick = StreamSelector.autoSelect(usable, prefs: prefs, remembered: progress?.lastStreamID) {
             phase = .idle
             await playback.play(.init(candidate: pick, ref: resolved, displayTitle: displayTitle, startAt: resume, next: next), env: env)
             return
@@ -70,6 +86,13 @@ final class PlayFlow {
     func choose(_ candidate: StreamCandidate, env: AppEnvironment) async {
         guard let playback, let pending else { return }
         phase = .idle
+        #if !os(tvOS)
+        if downloadOnly {
+            downloadOnly = false
+            await env.downloads.start(ref: pending.ref, title: pending.displayTitle, posterPath: posterPath, candidate: candidate, env: env)
+            return
+        }
+        #endif
         await playback.play(.init(candidate: candidate, ref: pending.ref, displayTitle: pending.displayTitle, startAt: pending.startAt, next: pending.next), env: env)
     }
 

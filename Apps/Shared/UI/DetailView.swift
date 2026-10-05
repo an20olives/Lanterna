@@ -163,6 +163,7 @@ struct DetailView: View {
             }
             Menu {
                 Menu("Add to list", systemImage: "text.badge.plus") { listButtons }
+                downloadButtons
                 if ref.kind == .movie || model.resume != nil {
                     Button("Choose Stream", systemImage: "list.bullet") { Task { await play(forcePicker: true) } }
                 }
@@ -243,6 +244,36 @@ struct DetailView: View {
         }
         return "Play"
     }
+
+    #if !os(tvOS)
+    /// The title a download button acts on: the movie, or the episode Play would start.
+    private var downloadTarget: (ref: TitleRef, title: String)? {
+        if ref.kind == .movie { return (ref, summary.title) }
+        guard let target = model.resume?.ref else { return nil }
+        return (target, "\(summary.title) S\(target.season ?? 0) E\(target.episode ?? 0)")
+    }
+
+    @ViewBuilder private var downloadButtons: some View {
+        if let target = downloadTarget {
+            if let record = env.downloads.record(for: target.ref.key) {
+                switch record.state {
+                case .downloading:
+                    Button("Cancel download", systemImage: "xmark.circle") { env.downloads.cancel(target.ref.key) }
+                case .done:
+                    Button("Remove download", systemImage: "trash", role: .destructive) { env.downloads.delete(target.ref.key) }
+                case .failed:
+                    Button("Retry download", systemImage: "arrow.clockwise") {
+                        Task { await flow.start(ref: target.ref, displayTitle: target.title, forcePicker: true, download: true, posterPath: summary.posterPath, env: env) }
+                    }
+                }
+            } else {
+                Button("Download", systemImage: "arrow.down.circle") {
+                    Task { await flow.start(ref: target.ref, displayTitle: target.title, forcePicker: true, download: true, posterPath: summary.posterPath, env: env) }
+                }
+            }
+        }
+    }
+    #endif
 
     private func play(forcePicker: Bool = false) async {
         if ref.kind == .movie {

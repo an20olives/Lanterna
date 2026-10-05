@@ -45,8 +45,15 @@ public final class PlaybackRouter: Sendable {
         var source: RemoteByteSource?
         var result: ProbeResult?
         var failure: String?
+        // A downloaded file is served over loopback so the byte source and remux path stay the same as for a remote stream.
+        var fileServer: LocalFileServer?
+        var probeURL = url
+        if url.isFileURL {
+            let server = LocalFileServer(file: url)
+            if let served = try? await server.start() { probeURL = served; fileServer = server }
+        }
         do {
-            let opened = try await RemoteByteSource.open(url)
+            let opened = try await RemoteByteSource.open(probeURL)
             source = opened
             result = try await FFmpegProber.probe(opened)
         } catch {
@@ -58,7 +65,7 @@ public final class PlaybackRouter: Sendable {
         var remux: RemuxSession?
         if decision.engine == .aRemux, let source, let result {
             do {
-                let session = try RemuxSession(source: source, probe: result, decision: decision, externalSubtitles: externalSubtitles, thumbnails: thumbnails)
+                let session = try RemuxSession(source: source, probe: result, decision: decision, externalSubtitles: externalSubtitles, thumbnails: thumbnails, companion: fileServer)
                 playbackURL = try await session.start()
                 remux = session
             } catch {
@@ -70,6 +77,8 @@ public final class PlaybackRouter: Sendable {
             decision.engine = .c
             decision.reasons.append(.engineAFailedOpen)
         }
+
+        if remux == nil { fileServer?.stop() }
 
         let record = RouteRecord(date: Date(), probe: result?.probe, probeSummary: result?.probe.summary, decision: decision,
                                  prepareMillis: Int(Date().timeIntervalSince(started) * 1000), failure: failure)
