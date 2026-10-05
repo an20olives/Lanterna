@@ -106,6 +106,7 @@ struct ShelfRow: View {
                 .padding(.horizontal, Metrics.gutter)
                 .padding(.vertical, Metrics.rowPadding)
             }
+            .scrollClipDisabled()
         }
         .focusSectionIfTV()
     }
@@ -168,3 +169,17 @@ struct LanternaCardStyle: ButtonStyle {
     }
 }
 #endif
+
+/// A horizontally scrolling row inside a padded column. It runs to the screen edge and does not clip
+/// focus rings, shadows or the cards scrolling past the gutter.
+struct HRow<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            content.padding(.horizontal, Metrics.gutter)
+        }
+        .scrollClipDisabled()
+        .padding(.horizontal, -Metrics.gutter)
+    }
+}

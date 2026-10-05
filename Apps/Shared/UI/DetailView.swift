@@ -168,7 +168,7 @@ struct DetailView: View {
     private var episodesSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             if let seasons = model.detail?.seasons, seasons.count > 1 {
-                ScrollView(.horizontal, showsIndicators: false) {
+                HRow {
                     HStack {
                         ForEach(seasons) { season in
                             Button(season.name) {
@@ -182,7 +182,7 @@ struct DetailView: View {
                 }
                 .focusSectionIfTV()
             }
-            ScrollView(.horizontal, showsIndicators: false) {
+            HRow {
                 LazyHStack(alignment: .top, spacing: Metrics.rowSpacing) {
                     ForEach(model.episodes) { episode in
                         episodeCard(episode)
@@ -245,7 +245,7 @@ struct DetailView: View {
     private func castRow(_ cast: [CastMember]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Cast").font(.title3.bold())
-            ScrollView(.horizontal, showsIndicators: false) {
+            HRow {
                 LazyHStack(spacing: Metrics.rowSpacing) {
                     ForEach(cast.prefix(12)) { member in
                         NavigationLink(value: PersonRoute(id: member.id, name: member.name, profilePath: member.profilePath)) {
@@ -267,7 +267,7 @@ struct DetailView: View {
     private func trailersRow(_ trailers: [Trailer]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Trailers").font(.title3.bold())
-            ScrollView(.horizontal, showsIndicators: false) {
+            HRow {
                 LazyHStack(spacing: Metrics.rowSpacing) {
                     ForEach(trailers.prefix(6)) { trailer in
                         Button { openTrailer(trailer) } label: {

@@ -205,6 +205,7 @@ struct HomeView: View {
                 .padding(.horizontal, Metrics.gutter)
                 .padding(.vertical, Metrics.rowPadding)
             }
+            .scrollClipDisabled()
         }
         .focusSectionIfTV()
     }

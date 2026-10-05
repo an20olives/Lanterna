@@ -29,7 +29,7 @@ struct PersonView: View {
                     RemoteImage(url: TMDBImage.url(person?.profilePath ?? route.profilePath, .profile), placeholder: route.name)
                         .frame(width: 200, height: 300).clipShape(RoundedRectangle(cornerRadius: 16))
                     VStack(alignment: .leading, spacing: 12) {
-                        Text(route.name).font(.largeTitle.bold())
+                        Text(person?.name ?? route.name).font(.largeTitle.bold())
                         let facts = [person?.birthday.map { "Born \($0)" }, person?.birthplace].compactMap { $0 }.joined(separator: " · ")
                         if !facts.isEmpty { Text(facts).foregroundStyle(.secondary) }
                         if let bio = person?.biography { Text(bio).lineLimit(8).frame(maxWidth: 1000, alignment: .leading) }

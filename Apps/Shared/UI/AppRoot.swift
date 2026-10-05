@@ -7,6 +7,7 @@ struct AppRoot: View {
     @State private var playback = PlaybackController()
     @State private var flow = PlayFlow()
     @State private var sync: SyncEngine
+    @State private var tab: AppTab = DebugRoute.current.map { DebugRoute.tab($0) ?? .debug } ?? .home
     @Environment(\.scenePhase) private var scenePhase
 
     /// The environment is created once by the App and passed in, so a re-evaluated root never builds a second one.
@@ -18,11 +19,15 @@ struct AppRoot: View {
     }
 
     var body: some View {
-        TabView {
-            Tab("Home", systemImage: "house") { HomeView() }
-            Tab("Library", systemImage: "books.vertical") { LibraryView() }
-            Tab("Settings", systemImage: "gearshape") { NavigationStack { SettingsView() } }
-            Tab("Search", systemImage: "magnifyingglass", role: .search) { SearchView() }
+        TabView(selection: $tab) {
+            if let route = DebugRoute.current, DebugRoute.tab(route) == nil {
+                Tab("Debug", systemImage: "ladybug", value: AppTab.debug) { NavigationStack { DebugRouteView(route: route) } }
+            } else {
+                Tab("Home", systemImage: "house", value: AppTab.home) { HomeView() }
+                Tab("Library", systemImage: "books.vertical", value: AppTab.library) { LibraryView() }
+                Tab("Settings", systemImage: "gearshape", value: AppTab.settings) { NavigationStack { SettingsView() } }
+                Tab("Search", systemImage: "magnifyingglass", value: AppTab.search, role: .search) { SearchView() }
+            }
         }
         .tint(Theme.accent)
         .preferredColorScheme(.dark)
@@ -60,6 +65,9 @@ struct AppRoot: View {
             }
             await sync.syncNow()
             sync.startTimer()
+            if let route = DebugRoute.current, route.hasPrefix("picker/"), let id = Int(route.dropFirst(7)) {
+                await flow.start(ref: .movie(tmdbID: id, imdbID: nil), displayTitle: "Debug", forcePicker: true, env: env)
+            }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { sync.kick() }

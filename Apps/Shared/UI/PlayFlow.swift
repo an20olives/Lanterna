@@ -124,6 +124,9 @@ struct StreamPickerView: View {
             }
             .navigationTitle(flow.heading)
         }
+        // A cover is see-through by default, which let Home bleed behind the picker.
+        .background(Color.black.ignoresSafeArea())
+        .presentationBackground(.black)
         #if os(tvOS)
         .onExitCommand { flow.cancel() }
         #endif
@@ -157,21 +160,34 @@ struct StreamPickerView: View {
 struct StreamCard: View {
     let candidate: StreamCandidate
 
+    /// "4K · REMUX · HEVC · DV · HDR10 · Atmos": what the stream is, before its file name.
+    private var summary: String {
+        var parts: [String] = []
+        if let resolution = candidate.claimed.resolution { parts.append(resolution.label) }
+        if let source = candidate.claimed.source { parts.append(source) }
+        if let codec = candidate.claimed.videoCodec { parts.append(codec) }
+        parts += candidate.claimed.hdr.sorted { $0.rawValue < $1.rawValue }.map(\.label)
+        if candidate.claimed.hasAtmos { parts.append("Atmos") }
+        else if let audio = candidate.claimed.audioCodecs.sorted().first { parts.append(audio) }
+        return parts.isEmpty ? "Unknown format" : parts.joined(separator: "  ·  ")
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(candidate.displayName).font(.headline).lineLimit(1)
-                Spacer()
-                if candidate.isCached == true { Label("Ready", systemImage: "checkmark.circle.fill").labelStyle(.iconOnly).foregroundStyle(.green) }
-                if let size = formatSize(candidate.sizeBytes) { Text(size).foregroundStyle(.secondary) }
-            }
-            HStack(spacing: 8) {
-                BadgeStrip(badges: candidate.claimed.badges)
-                if let group = candidate.releaseGroup { Text(group).font(.caption).foregroundStyle(.secondary) }
+        HStack(alignment: .firstTextBaseline, spacing: 20) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(summary).font(.headline).lineLimit(1)
+                Text(candidate.displayName).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                 if case .unavailable(let reason) = candidate.availability { Text(reason).font(.caption).foregroundStyle(.red) }
             }
+            Spacer(minLength: 12)
+            if candidate.isCached == true {
+                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green).accessibilityLabel("Ready")
+            }
+            if let size = formatSize(candidate.sizeBytes) {
+                Text(size).foregroundStyle(.secondary).frame(minWidth: 110, alignment: .trailing)
+            }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
 }
 

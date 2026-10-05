@@ -36,8 +36,10 @@ struct HeroCarousel: View {
                         }
                     }
                 }
-                .padding(Metrics.gutter)
+                .padding(36)
             }
+            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .padding(.horizontal, Metrics.gutter)
             .id(item.id)
             .transition(.opacity)
             .accessibilityIdentifier("hero")

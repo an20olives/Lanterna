@@ -47,4 +47,4 @@ cd Packages/LanternaPlayer && xcodebuild test -scheme LanternaPlayer-Package -de
 xcodebuild test -scheme Lanterna-tvOS -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation)'
 ```
 
-Debug launch arguments: `-lab` (open the P0 lab), `-dev-media-url <base>` (serve test files as streams), `-uitest-reset` (clean Keychain and in-memory store), `-autorun-url`, `-autorun-mode`, `-autorun-seconds` (headless lab runs).
+Debug launch arguments: `-route <screen>` (opens one screen directly inside the tab bar, e.g. `tab/library`, `settings/sources`, `detail/movie/603`, `picker/603`, `person/6384`), `-lab` (open the P0 lab), `-dev-media-url <base>` (serve test files as streams), `-uitest-reset` (clean Keychain and in-memory store), `-autorun-url`, `-autorun-mode`, `-autorun-seconds` (headless lab runs).
