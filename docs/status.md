@@ -15,13 +15,17 @@ Built without the P0 gate being recorded, at the owner's request. Everything bel
 
 Parity against `replica/features.csv`: 65.4 of 100 (`replica/parity.md`). Every remaining must-have is "built, unverified on the TV".
 
+## Added after the first pass
+
+Hero carousel, shelf editor (filters, TMDB lists, Trakt lists), person page, trailers row (opens the YouTube app), Skip Intro and recap skip from Jellyfin media segments, external subtitles from the stream source (served by Engine A as an extra rendition, passed to KSPlayer on C), subtitle size, colour, background and timing, Jellyfin remote-address fallback, Settings search, TorBox account check (`Settings > Sources and keys`, or `scripts/torbox-check.sh`).
+
 ## Not done
 
-Skip Intro and recap, hero carousel, shelf editor, trailers, person page, external subtitles in the player, subtitle appearance, Jellyfin remote-address fallback, Jellyfin trickplay, custom lists, downloads, release notifications, Settings search. See the Missing list in `replica/parity.md`.
+Jellyfin trickplay, custom lists, downloads, release notifications, subtitle position, MDBList and Letterboxd lists. See the Missing list in `replica/parity.md`.
 
 ## Blocked on you
 
-1. **Debrid account.** Every AIOStreams stream currently redirects to a "Payment required" placeholder. Renew TorBox (or point the config at a working debrid) and rerun a stream check.
+1. **TorBox renewal.** Streams now resolve to TorBox's CDN, but the plan expires 2026-10-05 23:26 UTC and is not auto-renewing.
 2. **TMDB read token** and **Trakt client ID and secret**. Without TMDB the app shows placeholder titles. Put them in `Config/Local.xcconfig` (see `Local.xcconfig.example`) or paste them in Settings > Sources and keys.
 3. **P0 on the Apple TV**, using the corpus in `p0-player-spike.md`. Start with the Toy Story file and the open questions in `p0-results.md`.
 

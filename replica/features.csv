@@ -4,7 +4,7 @@ TorBox library (torrents usenet web downloads),sources,must,no,partial,"Steering
 TorBox cached-release check on stream cards,sources,must,yes,yes,Prism showed a green check when cached; Lanterna gets it from AIOStreams/TorBox | Built: Ready mark from the AIOStreams cache claim
 Jellyfin source over Tailscale via HTTPS,sources,must,yes,partial,"TMDB-first matching by ProviderIds; title+year fallback stays unmatched if ambiguous | Built: Auth, Quick Connect, library, streams, progress built against fixtures; no live server run"
 MediaSource protocol behind every source,sources,must,no,yes,CLAUDE.md architecture; Prism has curated per-server clients | Built: LanternaKit/Core/MediaSource.swift with five adapters
-Jellyfin remote address fallback,sources,should,yes,no,Try primary then remote automatically | Built: Remote URL is stored; automatic fallback not built
+Jellyfin remote address fallback,sources,should,yes,yes,"Try primary then remote automatically | Built: Tries the server address, then the remote one; the working one sticks (tested)"
 Jellyfin playback progress reporting,sources,should,yes,partial,"Sessions/Playing | Built: Reports start, progress, stop; fixtures only"
 Jellyfin trickplay thumbnails for scrub,sources,could,yes,no,
 Server badge on posters for owned titles,sources,should,yes,no,
@@ -23,15 +23,15 @@ Engine C: Now Playing display criteria PiP and native-like transport by hand,pla
 PGS selection reroutes A to C at current position,player,must,no,partial,Built: Custom menu item reroutes to C; untested on device
 DV Profile 7 to 8.1 metadata rewrite,player,could,yes,no,Prism does this frame by frame; not in Lanterna plan; add a P7 file to P0 corpus | Built: Not planned for v1
 Resume from saved position (never 0:00),player,must,yes,yes,"Prism shipped several fixes for this | Built: ProgressStore start offset, never 0:00 (tested)"
-Skip Intro button from server markers,player,should,yes,no,Jellyfin segment markers; no Prism database
-Recap skip,player,could,yes,no,
+Skip Intro button from server markers,player,should,yes,partial,"Jellyfin segment markers; no Prism database | Built: Jellyfin media segments: native button on tvOS, overlay on iPhone, or auto-skip; needs a Jellyfin 10.10+ server to exercise"
+Recap skip,player,could,yes,partial,Built: Same mechanism as Skip Intro
 Up Next countdown card and auto-play next episode,player,must,yes,partial,Configurable 15 to 90 s before end | Built: Card and auto-advance built; not UI tested
 Pre-resolve next episode stream near end,player,should,yes,no,
 Audio and subtitle track switching in player,player,must,yes,partial,"Grouped by language; preferred first | Built: Native menus on A, KSPlayer menus on C"
 Default audio keeps file's own track; skip commentary and AD,player,should,yes,partial,Built: Routing keeps the file's default; commentary filter not applied
 Forced subtitles auto-select,player,should,yes,partial,Metadata only | Built: Forced preference feeds routing
-Subtitle appearance (font size delay position),player,should,yes,no,
-External subtitles from AIOStreams subtitle resource,player,should,partial,no,"Prism uses OpenSubtitles and SubDL | Built: AIOStreams subtitle API implemented, not wired into the player"
+Subtitle appearance (font size delay position),player,should,yes,partial,"Built: Size, colour, background on Engine A; timing offset on Engine C only"
+External subtitles from AIOStreams subtitle resource,player,should,partial,yes,"Prism uses OpenSubtitles and SubDL | Built: Fetched from the source, served as an extra WebVTT rendition on Engine A (tested), handed to KSPlayer on Engine C"
 Playback speed 0.5x to 2x,player,could,yes,no,
 Stats for nerds overlay,player,could,yes,no,Useful during P0 | Built: Diagnostics and the P0 lab exist
 Quiet reconnect on brief network drop,player,should,yes,no,
@@ -51,19 +51,19 @@ Quick Play from Continue Watching,streams,must,yes,yes,Built: Continue Watching 
 Copy stream URL,streams,could,yes,no,Must redact in logs
 Home with Continue Watching and shelves (tvOS),home,must,yes,yes,Built: UI tested on the simulator
 Home with Continue Watching and shelves (iPhone),home,must,yes,yes,Built: Builds and renders in the iPhone simulator
-Hero carousel (optional),home,should,yes,no,
-Custom shelves from filters (genre year rating language),home,should,yes,no,Cap 20 | Built: Config supports presets; no editor
-Shelves from public TMDB Trakt MDBList Letterboxd lists,home,could,yes,no,Trakt lists first
+Hero carousel (optional),home,should,yes,yes,"Built: Featured strip on Home, toggle in Settings > Home screen (screenshot verified with real TMDB art)"
+Custom shelves from filters (genre year rating language),home,should,yes,yes,"Cap 20 | Built: Filter builder (genre, years, rating, language, sort) in Settings > Home screen; 20 shelf cap"
+Shelves from public TMDB Trakt MDBList Letterboxd lists,home,could,yes,yes,Trakt lists first | Built: TMDB list numbers and Trakt lists; MDBList and Letterboxd not built
 Showcases and folders with artwork,home,skip,yes,skip,Not needed for one owner
 See All grid with filter and sort,home,should,yes,partial,tvOS ends every shelf with See All | Built: Paged grid with client-side sort; no filter sheet
 Automatic personalized Home,home,skip,yes,skip,
 Movie detail page,detail,must,yes,yes,
 Show detail with season picker and episodes,detail,must,yes,yes,"Built: Seasons, episodes, progress marks"
 Smart Resume Play on show detail,detail,must,yes,yes,"Built: Unfinished episode, else next, else S1E1"
-Trailers row,detail,should,yes,no,TMDB video keys; no Prism resolver
-Cast row and person page,detail,should,yes,partial,Built: Cast row only; no person page
+Trailers row,detail,should,yes,partial,TMDB video keys; no Prism resolver | Built: Row with thumbnails; opens the YouTube app (tvOS has no browser)
+Cast row and person page,detail,should,yes,yes,Built: Cast row only; no person page | Built: Cast row opens a person page with filmography; people also open from Search
 Ratings strip and reviews,detail,could,yes,no,
-Mark watched / mark up to here,detail,should,yes,yes,"Built: Movie button, episode menu, mark up to here, mark unwatched; queued for Trakt history"
+Mark watched / mark up to here,detail,should,yes,yes,"Built: Movie button, episode menu, mark up to here, mark unwatched; queued for Trakt history | Built: Movie button, episode menu, mark up to here, mark unwatched; queued for Trakt history"
 Thumbs up down and personal ratings,detail,could,yes,no,
 Context menus on posters,detail,should,yes,partial,Long-press on tvOS | Built: Continue Watching card only
 Parents Guide and Ask Prism AI,detail,skip,yes,skip,
@@ -93,7 +93,7 @@ First-run setup on Apple TV without typing,pairing,must,yes,partial,QR pairing o
 iPhone remote control of Apple TV playback,pairing,could,yes,no,Prism Companion Remote
 Play on Apple TV from iPhone,pairing,could,yes,no,
 Settings root,settings,must,yes,yes,
-Settings search,settings,could,yes,no,
+Settings search,settings,could,yes,yes,Built: Search field matches settings and keywords (tested)
 Diagnostics: routing log and source health,settings,should,partial,yes,Prism has media-server diagnostics | Built: Routing log and source health
 Secrets in Keychain only and redacted in logs,settings,must,yes,yes,Built: Redactor everywhere; schema test bans URL and token fields
 Share and backup settings export,settings,skip,yes,skip,

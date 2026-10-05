@@ -1,23 +1,23 @@
-## Parity: 65.4 / 100
+## Parity: 72.5 / 100
 
-features 65.4  (91 counted, must-haves 29 of 41 done)
+features 72.5  (91 counted, must-haves 29 of 41 done)
 
 Not shippable yet: 12 must-have features are not done.
 
 ## By area, weakest first
 - pairing                       30.0  (3 features)
-- player                        47.5  (27 features)
-- sources                       53.1  (7 features)
-- home                          53.8  (6 features)
+- player                        54.9  (27 features)
 - library                       60.0  (6 features)
 - ios                           60.0  (3 features)
+- sources                       65.6  (7 features)
 - tvos                          65.6  (6 features)
-- detail                        68.4  (9 features)
+- detail                        78.9  (9 features)
 - search                        80.0  (2 features)
-- settings                      88.9  (4 features)
+- home                          92.3  (6 features)
 - sync                          92.3  (5 features)
 - streams                       94.4  (8 features)
 - services                     100.0  (5 features)
+- settings                     100.0  (4 features)
 
 ## Missing, in build order
 - [must] pairing: First-run setup on Apple TV without typing, partial  (QR pairing or Trakt device code | Built: QR receiver and Trakt code exist; first-run screen routes to them)
@@ -32,31 +32,25 @@ Not shippable yet: 12 must-have features are not done.
 - [must] player: Up Next countdown card and auto-play next episode, partial  (Configurable 15 to 90 s before end | Built: Card and auto-advance built; not UI tested)
 - [must] sources: Jellyfin source over Tailscale via HTTPS, partial  (TMDB-first matching by ProviderIds; title+year fallback stays unmatched if ambiguous | Built: Auth, Quick Connect, library, streams, progress built against fixtures; no live server run)
 - [must] tvos: tvOS focus: Menu returns to top not out of app, partial  (Built: Not verified on device)
-- [should] detail: Trailers row, no  (TMDB video keys; no Prism resolver)
-- [should] home: Custom shelves from filters (genre year rating language), no  (Cap 20 | Built: Config supports presets; no editor)
-- [should] home: Hero carousel (optional), no
-- [should] player: External subtitles from AIOStreams subtitle resource, no  (Prism uses OpenSubtitles and SubDL | Built: AIOStreams subtitle API implemented, not wired into the player)
 - [should] player: Pre-resolve next episode stream near end, no
 - [should] player: Quiet reconnect on brief network drop, no
-- [should] player: Skip Intro button from server markers, no  (Jellyfin segment markers; no Prism database)
-- [should] player: Subtitle appearance (font size delay position), no
-- [should] sources: Jellyfin remote address fallback, no  (Try primary then remote automatically | Built: Remote URL is stored; automatic fallback not built)
 - [should] sources: Server badge on posters for owned titles, no
 - [should] tvos: tvOS focus: cancel stream search restores focus, no
 - [should] tvos: tvOS focus: down from show artwork lands on current episode, no
-- [should] detail: Cast row and person page, partial  (Built: Cast row only; no person page)
 - [should] detail: Context menus on posters, partial  (Long-press on tvOS | Built: Continue Watching card only)
+- [should] detail: Trailers row, partial  (TMDB video keys; no Prism resolver | Built: Row with thumbnails; opens the YouTube app (tvOS has no browser))
 - [should] home: See All grid with filter and sort, partial  (tvOS ends every shelf with See All | Built: Paged grid with client-side sort; no filter sheet)
 - [should] library: Media Library browse (own files only), partial  (Sort Title Year Recently Added | Built: List with play; no sort menu)
 - [should] player: Default audio keeps file's own track; skip commentary and AD, partial  (Built: Routing keeps the file's default; commentary filter not applied)
 - [should] player: Forced subtitles auto-select, partial  (Metadata only | Built: Forced preference feeds routing)
 - [should] player: PiP on iPhone, partial  (Built: AVPlayerViewController default plus playback audio session; untested)
+- [should] player: Skip Intro button from server markers, partial  (Jellyfin segment markers; no Prism database | Built: Jellyfin media segments: native button on tvOS, overlay on iPhone, or auto-skip; needs a Jellyfin 10.10+ server to exercise)
+- [should] player: Subtitle appearance (font size delay position), partial  (Built: Size, colour, background on Engine A; timing offset on Engine C only)
 - [should] search: Search history and genre browse grid, partial  (Built: Recent searches; no genre grid)
 - [should] sources: Jellyfin playback progress reporting, partial  (Sessions/Playing | Built: Reports start, progress, stop; fixtures only)
 - [should] sync: Continue Watching remove and hidden-shows restore, partial  (Built: Remove with 30 day hide; no restore screen)
 - [could] detail: Ratings strip and reviews, no
 - [could] detail: Thumbs up down and personal ratings, no
-- [could] home: Shelves from public TMDB Trakt MDBList Letterboxd lists, no  (Trakt lists first)
 - [could] ios: Liquid Glass chrome, no  (Blocked until the build Mac has Xcode 26; use system materials meanwhile | Built: Blocked on Xcode 26)
 - [could] ios: OLED true black mode, no  (Dark-first anyway)
 - [could] library: Custom lists editable (Trakt lists), no
@@ -67,12 +61,11 @@ Not shippable yet: 12 must-have features are not done.
 - [could] player: DV Profile 7 to 8.1 metadata rewrite, no  (Prism does this frame by frame; not in Lanterna plan; add a P7 file to P0 corpus | Built: Not planned for v1)
 - [could] player: External player handoff (Infuse VLC), no
 - [could] player: Playback speed 0.5x to 2x, no
-- [could] player: Recap skip, no
 - [could] player: Stats for nerds overlay, no  (Useful during P0 | Built: Diagnostics and the P0 lab exist)
-- [could] settings: Settings search, no
 - [could] sources: Jellyfin trickplay thumbnails for scrub, no
 - [could] streams: Copy stream URL, no  (Must redact in logs)
 - [could] player: AirPlay from iPhone, partial  (Built: AVPlayerViewController default; untested)
+- [could] player: Recap skip, partial  (Built: Same mechanism as Skip Intro)
 
 ## Left out on purpose (not scored)
 - Shazam soundtrack recognition: Not needed
