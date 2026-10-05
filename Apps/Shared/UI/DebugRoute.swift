@@ -41,6 +41,21 @@ struct DebugRouteView: View {
             case ("settings", "home"?): HomeScreenSettingsView()
             case ("settings", "trakt"?): TraktSettingsView()
             case ("settings", "diagnostics"?): DiagnosticsView()
+            case ("marquee", _):
+                HStack(alignment: .top, spacing: 40) {
+                    Button { } label: {
+                        VStack(alignment: .leading) {
+                            Color.gray.frame(width: Metrics.poster.width, height: Metrics.poster.height)
+                            MarqueeText(text: "Come Home Love: Lo and Behold, The Very Long Title").frame(width: Metrics.poster.width, alignment: .leading)
+                        }
+                    }
+                    .cardButtonStyle()
+                    VStack(alignment: .leading) {
+                        Color.gray.opacity(0.5).frame(width: Metrics.poster.width, height: Metrics.poster.height)
+                        Text("Neighbour title that is also long enough").font(.caption).lineLimit(1).frame(width: Metrics.poster.width, alignment: .leading)
+                    }
+                }
+                .padding(Metrics.gutter)
             case ("person", let id?): PersonView(route: PersonRoute(id: Int(id) ?? 0, name: "", profilePath: nil))
             case ("detail", let kind?):
                 if let summary { DetailView(summary: summary) } else { ProgressView() }

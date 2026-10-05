@@ -185,6 +185,8 @@ struct HRow<Content: View>: View {
 }
 
 /// One line of text that ellipsizes normally and, while its button has focus, scrolls to show the rest.
+/// The truncated text defines the box; the scrolling copy is an overlay clipped to that box, so it can never spill
+/// onto a neighbour.
 struct MarqueeText: View {
     @Environment(\.isFocused) private var isFocused
     let text: String
@@ -195,25 +197,30 @@ struct MarqueeText: View {
     @State private var moving = false
 
     private var overflow: CGFloat { max(0, textWidth - boxWidth) }
+    private var scrolling: Bool { isFocused && overflow > 1 }
 
     var body: some View {
-        ZStack(alignment: .leading) {
-            if isFocused && overflow > 1 {
-                Text(text).font(font).foregroundStyle(color).lineLimit(1).fixedSize()
-                    .offset(x: moving ? -(overflow + 24) : 0)
-                    .animation(moving ? .linear(duration: Double(overflow + 24) / 40).delay(0.8).repeatForever(autoreverses: true) : .default, value: moving)
-                    .onAppear { moving = true }
-                    .onDisappear { moving = false }
-            } else {
-                Text(text).font(font).foregroundStyle(color).lineLimit(1)
+        Text(text).font(font).foregroundStyle(color).lineLimit(1)
+            .opacity(scrolling ? 0 : 1)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(GeometryReader { box in
+                Color.clear.onAppear { boxWidth = box.size.width }.onChange(of: box.size.width) { _, new in boxWidth = new }
+            })
+            .overlay(alignment: .leading) {
+                if scrolling {
+                    Text(text).font(font).foregroundStyle(color).lineLimit(1).fixedSize()
+                        .offset(x: moving ? -(overflow + 16) : 0)
+                        .animation(.linear(duration: Double(overflow + 16) / 40).delay(1).repeatForever(autoreverses: true), value: moving)
+                        .onAppear { moving = true }
+                        .onDisappear { moving = false }
+                }
             }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .clipped()
-        .background(GeometryReader { box in Color.clear.onAppear { boxWidth = box.size.width }.onChange(of: box.size.width) { _, new in boxWidth = new } })
-        .background(
-            Text(text).font(font).lineLimit(1).fixedSize().hidden()
-                .background(GeometryReader { size in Color.clear.onAppear { textWidth = size.size.width }.onChange(of: text) { textWidth = size.size.width } })
-        )
+            .clipped()
+            .background(
+                Text(text).font(font).lineLimit(1).fixedSize().hidden()
+                    .background(GeometryReader { size in
+                        Color.clear.onAppear { textWidth = size.size.width }.onChange(of: text) { textWidth = size.size.width }
+                    })
+            )
     }
 }
