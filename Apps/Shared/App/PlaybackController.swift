@@ -98,20 +98,26 @@ final class PlaybackController {
                                                subtitlesEnabled: prefs.subtitlesEnabled, showForcedSubtitles: prefs.showForcedSubtitles),
                 hardware: PlaybackRouter.hardwareCapabilities(),
                 transcodeTarget: AudioTranscodeTarget(rawValue: prefs.audioTranscode) ?? .alac)
+            var thumbnails: ThumbnailTrack?
             async let subtitles = request.persists ? env.externalSubtitles(for: request.ref) : []
             if request.persists, case .jellyfin(let itemID, _) = request.candidate.locatorHint, let jellyfin = source as? JellyfinSource {
                 segments = await jellyfin.segments(itemID: itemID)
+                if let info = await jellyfin.trickplay(itemID: itemID) {
+                    thumbnails = ThumbnailTrack(width: info.width, height: info.height, columns: info.columns, rows: info.rows,
+                                                thumbnailCount: info.thumbnailCount, intervalSeconds: Double(info.intervalMilliseconds) / 1000,
+                                                bandwidth: info.bandwidth) { index in try await jellyfin.trickplayTile(info, index: index) }
+                }
             }
             let external = await subtitles
             var current = locator
-            var prepared = try await router.prepare(url: current.url, context: context, externalSubtitles: external)
+            var prepared = try await router.prepare(url: current.url, context: context, externalSubtitles: external, thumbnails: thumbnails)
             // A dead CDN node answers "could not connect". A fresh link can land on another node, so try again before giving up.
             var attempts = 0
             while prepared.record.probe == nil, Self.isNetworkFailure(prepared.record.failure), attempts < 2 {
                 attempts += 1
                 try await Task.sleep(for: .seconds(1.5))
                 if let source, request.directURL == nil, let fresh = try? await source.resolve(request.candidate.locatorHint) { current = fresh }
-                prepared = try await router.prepare(url: current.url, context: context, externalSubtitles: external)
+                prepared = try await router.prepare(url: current.url, context: context, externalSubtitles: external, thumbnails: thumbnails)
             }
             if prepared.record.probe == nil, Self.isNetworkFailure(prepared.record.failure) {
                 // Engine C would hit the same wall, so say what happened instead of opening a second failure.

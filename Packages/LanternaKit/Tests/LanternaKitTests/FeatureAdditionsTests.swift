@@ -321,3 +321,23 @@ struct UpcomingReleaseTests {
         #expect(TMDBClient.upcoming(isMovie: false, releaseDate: nil, next: nil, now: now) == nil)
     }
 }
+
+struct JellyfinTrickplayTests {
+    @Test func picksTheWidestSheetUpTo480() async {
+        let body = #"{"Trickplay":{"srcA":{"320":{"Width":320,"Height":180,"TileWidth":10,"TileHeight":10,"ThumbnailCount":600,"Interval":10000,"Bandwidth":200000},"640":{"Width":640,"Height":360,"TileWidth":5,"TileHeight":5,"ThumbnailCount":600,"Interval":10000,"Bandwidth":900000}}}}"#
+        let transport = ScriptedTransport.routes([("/Items/item1", body)])
+        let client = JellyfinClient(baseURLs: [URL(string: "https://pi.local")!], device: JellyfinDevice(deviceID: "D", deviceName: "TV", version: "0.1"),
+                                    token: "T", userID: "U", http: HTTPClient(transport: transport, maxRetries: 0, sleep: { _ in }))
+        let info = await client.trickplay(itemID: "item1")
+        #expect(info?.sheetWidth == 320)
+        #expect(info?.columns == 10)
+        #expect(info?.intervalMilliseconds == 10000)
+    }
+
+    @Test func noTrickplayFieldMeansNil() async {
+        let transport = ScriptedTransport.routes([("/Items/item2", #"{"Name":"x"}"#)])
+        let client = JellyfinClient(baseURLs: [URL(string: "https://pi.local")!], device: JellyfinDevice(deviceID: "D", deviceName: "TV", version: "0.1"),
+                                    token: "T", userID: "U", http: HTTPClient(transport: transport, maxRetries: 0, sleep: { _ in }))
+        #expect(await client.trickplay(itemID: "item2") == nil)
+    }
+}

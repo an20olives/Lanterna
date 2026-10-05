@@ -109,11 +109,13 @@ public final class RemuxSession: @unchecked Sendable {
     private var masterPlaylist = ""
     /// Rendition ids from 1000 up, clear of container stream indices.
     private let externalSubtitles: [ExternalSubtitle]
+    private let thumbnails: ThumbnailTrack?
     static let externalBase = 1000
 
     public init(source: RemoteByteSource, probe: ProbeResult, decision: RoutingDecision, options: Options = Options(),
-                externalSubtitles: [ExternalSubtitle] = []) throws {
+                externalSubtitles: [ExternalSubtitle] = [], thumbnails: ThumbnailTrack? = nil) throws {
         self.externalSubtitles = externalSubtitles
+        self.thumbnails = thumbnails
         guard source.rangeSupported else { throw EngineAError("Engine A needs Range support") }
         self.producer = SegmentProducer(source: source, probe: probe, decision: decision, targetDuration: options.segmentDuration)
         self.decision = decision
@@ -174,6 +176,12 @@ public final class RemuxSession: @unchecked Sendable {
             case .segment(.audio(let i), let n):
                 guard producer.audio[i] != nil, producer.plan.segments.indices.contains(n) else { return .notFound() }
                 return HTTPResponse(status: 200, contentType: "audio/mp4", body: try await coordinator.segment(n).audio[i] ?? Data())
+            case .thumbnailPlaylist:
+                guard let thumbnails else { return .notFound() }
+                return HTTPResponse(status: 200, contentType: playlist, body: Data(thumbnails.playlist().utf8))
+            case .thumbnailSheet(let n):
+                guard let thumbnails, n >= 0, n < thumbnails.sheetCount else { return .notFound() }
+                return HTTPResponse(status: 200, contentType: "image/jpeg", body: try await thumbnails.fetch(n))
             case .subtitlePlaylist(let i):
                 guard producer.subtitleTracks[i] != nil || externalIndex(i) != nil else { return .notFound() }
                 let text = PlaylistWriter.mediaPlaylist(plan: producer.plan, initURI: nil, segmentExtension: "vtt")
@@ -243,6 +251,8 @@ public final class RemuxSession: @unchecked Sendable {
                          frameRate: video?.frameRate.value ?? 24, videoRange: range,
                          bandwidth: max(bandwidth, 1_000_000), uri: "v/index.m3u8"),
             audio: audio, subtitles: subtitles + externals)
-        return PlaylistWriter.masterPlaylist(master)
+        let text = PlaylistWriter.masterPlaylist(master)
+        guard let thumbnails else { return text }
+        return text + (text.hasSuffix("\n") ? "" : "\n") + thumbnails.masterLine + "\n"
     }
 }

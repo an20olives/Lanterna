@@ -40,7 +40,7 @@ public final class PlaybackRouter: Sendable {
         HardwareCapabilities(av1HardwareDecode: VTIsHardwareDecodeSupported(0x6176_3031)) // 'av01'
     }
 
-    public func prepare(url: URL, context: RoutingContext, externalSubtitles: [ExternalSubtitle] = []) async throws -> PreparedPlayback {
+    public func prepare(url: URL, context: RoutingContext, externalSubtitles: [ExternalSubtitle] = [], thumbnails: ThumbnailTrack? = nil) async throws -> PreparedPlayback {
         let started = Date()
         var source: RemoteByteSource?
         var result: ProbeResult?
@@ -58,7 +58,7 @@ public final class PlaybackRouter: Sendable {
         var remux: RemuxSession?
         if decision.engine == .aRemux, let source, let result {
             do {
-                let session = try RemuxSession(source: source, probe: result, decision: decision, externalSubtitles: externalSubtitles)
+                let session = try RemuxSession(source: source, probe: result, decision: decision, externalSubtitles: externalSubtitles, thumbnails: thumbnails)
                 playbackURL = try await session.start()
                 remux = session
             } catch {

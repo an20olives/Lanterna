@@ -187,6 +187,27 @@ public struct JellyfinClient: Sendable {
         .sorted { $0.start < $1.start }
     }
 
+    /// Scrub-preview tile sheets (Jellyfin 10.9+). Nil when the server has none for this item.
+    public func trickplay(itemID: String) async -> TrickplayInfo? {
+        struct DTO: Decodable {
+            struct Info: Decodable { let Width: Int; let Height: Int; let TileWidth: Int; let TileHeight: Int; let ThumbnailCount: Int; let Interval: Int; let Bandwidth: Int? }
+            let Trickplay: [String: [String: Info]]?
+        }
+        guard let userID, let dto: DTO = try? await call("/Users/\(userID)/Items/\(itemID)", query: ["Fields": "Trickplay"]),
+              let sources = dto.Trickplay, let widths = sources.values.first else { return nil }
+        // The widest sheet up to 480 px: sharp enough for the scrub bar, small enough to fetch quickly.
+        guard let pick = widths.filter({ (Int($0.key) ?? 0) <= 480 }).max(by: { (Int($0.key) ?? 0) < (Int($1.key) ?? 0) }) ?? widths.min(by: { (Int($0.key) ?? 0) < (Int($1.key) ?? 0) }),
+              pick.value.TileWidth > 0, pick.value.TileHeight > 0, pick.value.Interval > 0, pick.value.ThumbnailCount > 0 else { return nil }
+        let info = pick.value
+        return TrickplayInfo(itemID: itemID, sheetWidth: Int(pick.key) ?? info.Width, width: info.Width, height: info.Height, columns: info.TileWidth, rows: info.TileHeight,
+                             thumbnailCount: info.ThumbnailCount, intervalMilliseconds: info.Interval, bandwidth: info.Bandwidth ?? 200_000)
+    }
+
+    public func trickplayTile(_ info: TrickplayInfo, index: Int) async throws -> Data {
+        let (data, _) = try await callRaw("/Videos/\(info.itemID)/Trickplay/\(info.sheetWidth)/\(index).jpg")
+        return data
+    }
+
     func items(_ query: [String: String]) async throws -> (items: [JellyfinItem], total: Int) {
         struct DTO: Decodable { let Items: [JellyfinItem]; let TotalRecordCount: Int? }
         var query = query
@@ -324,6 +345,8 @@ public struct JellyfinSource: MediaSource {
     }
 
     public func segments(itemID: String) async -> [MediaSegment] { (try? await client.segments(itemID: itemID)) ?? [] }
+    public func trickplay(itemID: String) async -> TrickplayInfo? { await client.trickplay(itemID: itemID) }
+    public func trickplayTile(_ info: TrickplayInfo, index: Int) async throws -> Data { try await client.trickplayTile(info, index: index) }
 
     public func resolve(_ hint: LocatorHint) async throws -> PlaybackLocator {
         guard case .jellyfin(let itemID, let mediaSourceID) = hint else { throw SourceError.unsupported }
@@ -377,5 +400,30 @@ public enum SegmentTracker {
     /// The segment to offer a skip for at `time`. The last half second is not worth a button.
     public static func active(at time: Double, in segments: [MediaSegment]) -> MediaSegment? {
         segments.first { time >= $0.start && time < $0.end - 0.5 }
+    }
+}
+
+
+/// Where Jellyfin keeps scrub-preview thumbnails: sheets of `columns` x `rows` thumbnails, one every `intervalMilliseconds`.
+public struct TrickplayInfo: Sendable, Hashable {
+    public var itemID: String
+    public var sheetWidth: Int
+    public var width: Int
+    public var height: Int
+    public var columns: Int
+    public var rows: Int
+    public var thumbnailCount: Int
+    public var intervalMilliseconds: Int
+    public var bandwidth: Int
+    public init(itemID: String, sheetWidth: Int, width: Int, height: Int, columns: Int, rows: Int, thumbnailCount: Int, intervalMilliseconds: Int, bandwidth: Int) {
+        self.itemID = itemID
+        self.sheetWidth = sheetWidth
+        self.width = width
+        self.height = height
+        self.columns = columns
+        self.rows = rows
+        self.thumbnailCount = thumbnailCount
+        self.intervalMilliseconds = intervalMilliseconds
+        self.bandwidth = bandwidth
     }
 }

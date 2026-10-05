@@ -123,3 +123,26 @@ struct StatsTests {
         #expect(Stats.percentile([], 90) == nil)
     }
 }
+
+struct ThumbnailTrackTests {
+    func track(count: Int = 25) -> ThumbnailTrack {
+        ThumbnailTrack(width: 320, height: 180, columns: 10, rows: 10, thumbnailCount: count, intervalSeconds: 10, bandwidth: 150_000) { _ in Data() }
+    }
+
+    @Test func playlistCoversEverySheetAndTheShortLastOne() {
+        let text = track(count: 250).playlist()
+        #expect(text.contains("#EXT-X-TILES:RESOLUTION=320x180,LAYOUT=10x10,DURATION=10.000"))
+        #expect(text.contains("#EXT-X-IMAGES-ONLY"))
+        #expect(text.components(separatedBy: "#EXTINF:1000.000,").count == 3)     // two full sheets of 100 x 10 s
+        #expect(text.contains("#EXTINF:500.000,\n2.jpg"))                           // 50 thumbnails left on the last sheet
+        #expect(text.hasSuffix("#EXT-X-ENDLIST\n"))
+    }
+
+    @Test func masterLineAndRoutes() {
+        #expect(track().masterLine == #"#EXT-X-IMAGE-STREAM-INF:BANDWIDTH=150000,RESOLUTION=320x180,CODECS="jpeg",URI="t/index.m3u8""#)
+        #expect(LocalRoute(path: "/tok/t/index.m3u8", token: "tok") == .thumbnailPlaylist)
+        #expect(LocalRoute(path: "/tok/t/3.jpg", token: "tok") == .thumbnailSheet(3))
+        #expect(LocalRoute(path: "/bad/t/3.jpg", token: "tok") == nil)
+        #expect(LocalRoute(path: "/tok/t/x.jpg", token: "tok") == nil)
+    }
+}

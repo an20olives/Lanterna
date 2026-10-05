@@ -14,6 +14,8 @@ public enum LocalRoute: Hashable, Sendable {
     case segment(Rendition, Int)
     case subtitlePlaylist(Int)
     case subtitleSegment(Int, Int)
+    case thumbnailPlaylist
+    case thumbnailSheet(Int)
 
     public init?(path: String, token: String) {
         let pathOnly = path.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false).first.map(String.init) ?? path
@@ -42,6 +44,10 @@ public enum LocalRoute: Hashable, Sendable {
             if rest[2] == "index.m3u8" { self = .mediaPlaylist(.audio(id)) }
             else if rest[2] == "init.mp4" { self = .initSegment(.audio(id)) }
             else if let n = number(rest[2], suffix: ".m4s") { self = .segment(.audio(id), n) }
+            else { return nil }
+        case 2 where rest[0] == "t":
+            if rest[1] == "index.m3u8" { self = .thumbnailPlaylist }
+            else if let n = number(rest[1], suffix: ".jpg") { self = .thumbnailSheet(n) }
             else { return nil }
         case 3 where rest[0] == "s":
             guard let id = Int(rest[1]), id >= 0 else { return nil }
