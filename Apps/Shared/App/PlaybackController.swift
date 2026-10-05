@@ -22,6 +22,10 @@ final class PlaybackController {
         var displayTitle: String
         var startAt: Double
         var next: NextEpisode?
+        /// Plays this URL directly (a trailer) instead of resolving the candidate through its source.
+        var directURL: URL?
+        /// Trailers leave no progress, history or scrobble behind.
+        var persists = true
     }
 
     struct UpNext: Equatable {
@@ -56,6 +60,13 @@ final class PlaybackController {
 
     var isPlaying: Bool { session != nil }
 
+    /// A trailer preview, played in the normal player with no progress kept.
+    func playTrailer(url: URL, title: String, ref: TitleRef, env: AppEnvironment) async {
+        let candidate = StreamCandidate(id: "trailer:\(ref.key)", sourceID: AppEnvironment.sourceID(.tmdb), sourceKind: .tmdb, title: ref,
+                                        displayName: "Trailer", locatorHint: .url(url))
+        await play(Request(candidate: candidate, ref: ref, displayTitle: "\(title) (Trailer)", startAt: 0, next: nil, directURL: url, persists: false), env: env)
+    }
+
     func play(_ request: Request, env: AppEnvironment) async {
         guard !isBusy else { return }
         isBusy = true
@@ -71,20 +82,24 @@ final class PlaybackController {
         offeredSegmentStart = nil
         autoSkipped = []
 
-        guard let source = await env.registry.source(for: request.candidate.sourceID) else {
+        let source = await env.registry.source(for: request.candidate.sourceID)
+        guard request.directURL != nil || source != nil else {
             errorMessage = "That source is not available any more."
             return
         }
         do {
-            let locator = try await source.resolve(request.candidate.locatorHint)
+            let locator: PlaybackLocator
+            if let direct = request.directURL { locator = PlaybackLocator(url: direct) }
+            else if let source { locator = try await source.resolve(request.candidate.locatorHint) }
+            else { return }
             let prefs = env.config.playerPrefs
             let context = RoutingContext(
                 preferences: PlayerPreferences(audioLanguages: prefs.audioLanguages, subtitleLanguages: prefs.subtitleLanguages,
                                                subtitlesEnabled: prefs.subtitlesEnabled, showForcedSubtitles: prefs.showForcedSubtitles),
                 hardware: PlaybackRouter.hardwareCapabilities(),
                 transcodeTarget: AudioTranscodeTarget(rawValue: prefs.audioTranscode) ?? .alac)
-            async let subtitles = env.externalSubtitles(for: request.ref)
-            if case .jellyfin(let itemID, _) = request.candidate.locatorHint, let jellyfin = source as? JellyfinSource {
+            async let subtitles = request.persists ? env.externalSubtitles(for: request.ref) : []
+            if request.persists, case .jellyfin(let itemID, _) = request.candidate.locatorHint, let jellyfin = source as? JellyfinSource {
                 segments = await jellyfin.segments(itemID: itemID)
             }
             let prepared = try await router.prepare(url: locator.url, context: context, externalSubtitles: await subtitles)
@@ -214,7 +229,7 @@ final class PlaybackController {
 
     /// Progress is written locally every time, and queued for Trakt on start, pause and stop.
     private func persist(_ phase: PlaybackReport.Phase) async {
-        guard let session, let request, let env else { return }
+        guard let session, let request, let env, request.persists else { return }
         let duration = session.duration ?? prepared?.probe?.durationSeconds ?? 0
         let position = session.currentTime
         Self.log.info("persist phase=\(phase.rawValue, privacy: .public) pos=\(position) dur=\(duration)")
@@ -239,7 +254,7 @@ final class PlaybackController {
     }
 
     private func logRoute(_ prepared: PreparedPlayback, outcome: String) async {
-        guard let env, let request else { return }
+        guard let env, let request, request.persists else { return }
         await env.cache.recordProbe(streamID: request.candidate.id, titleKey: request.ref.key, record: prepared.record, outcome: outcome)
     }
 
@@ -253,7 +268,7 @@ final class PlaybackController {
         finishing = true
         ticker?.cancel()
         pump?.cancel()
-        if completed, let request, let env {
+        if completed, let request, let env, request.persists {
             let duration = session.duration ?? prepared?.probe?.durationSeconds ?? 0
             if duration > 0 {
                 await env.progress.record(titleKey: request.ref.key, showTMDBID: request.ref.kind == .episode ? request.ref.tmdbID : nil,
@@ -275,7 +290,7 @@ final class PlaybackController {
     }
 
     private func persistStop(completed: Bool) async {
-        guard let session, let request, let env else { return }
+        guard let session, let request, let env, request.persists else { return }
         let duration = session.duration ?? prepared?.probe?.durationSeconds ?? 0
         guard duration > 0 else { return }
         let position = completed ? duration : session.currentTime

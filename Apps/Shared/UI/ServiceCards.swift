@@ -42,33 +42,34 @@ struct ServiceCards: View {
             let streaming = offers.filter { [.flatrate, .free, .ads].contains($0.type) }
             let mine = streaming.filter { subscribedIDs.contains($0.providerID) }
             if !mine.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
+                HRow {
                     HStack(spacing: Metrics.rowSpacing) {
                         ForEach(mine) { offer in
                             Button { open(offer) } label: {
-                                HStack {
+                                HStack(spacing: 16) {
                                     RemoteImage(url: TMDBImage.url(offer.logoPath, .providerLogo), placeholder: "")
-                                        .frame(width: 44, height: 44).clipShape(RoundedRectangle(cornerRadius: 8))
-                                    Text("Open in \(offer.name)")
+                                        .frame(width: 56, height: 56).clipShape(RoundedRectangle(cornerRadius: 10))
+                                    Text("Open in \(offer.name)").lineLimit(1)
                                 }
-                                .padding(8)
+                                .padding(.horizontal, 20).padding(.vertical, 12)
                             }
                             .cardButtonStyle()
                         }
                     }
-                    .padding(.vertical, 12)
+                    .padding(.vertical, Metrics.rowPadding)
                 }
             }
             let others = streaming.filter { !subscribedIDs.contains($0.providerID) }
             if !others.isEmpty {
-                Text("Also on \(others.map(\.name).joined(separator: ", "))").font(.callout).foregroundStyle(.secondary)
+                Text("Also on \(others.map(\.name).joined(separator: ", "))").font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
             if streaming.isEmpty && !offers.isEmpty {
-                Text("Rent or buy: \(offers.map(\.name).joined(separator: ", "))").font(.callout).foregroundStyle(.secondary)
+                Text("Rent or buy: \(offers.map(\.name).joined(separator: ", "))").font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
             if let message { Text(message).font(.callout).foregroundStyle(.orange) }
             if !offers.isEmpty { Text("Availability data from JustWatch via TMDB.").font(.caption2).foregroundStyle(.secondary) }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .task(id: ref.key) { offers = await env.availability(for: ref) }
     }
 

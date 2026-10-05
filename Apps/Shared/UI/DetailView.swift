@@ -14,6 +14,7 @@ final class DetailModel {
     var inWatchlist = false
     var isFavorite = false
     var offers: [ProviderOffer] = []
+    var trailerURL: URL?
 
     func load(summary: TitleSummary, env: AppEnvironment) async {
         let ref = summary.ref
@@ -23,6 +24,7 @@ final class DetailModel {
         inWatchlist = await env.library.contains(.watchlist, titleKey: key)
         isFavorite = await env.library.contains(.favorite, titleKey: key)
         offers = await env.availability(for: ref)
+        trailerURL = try? await env.itunes.previewURL(title: summary.title, year: summary.year, kind: ref.kind == .movie ? .movie : .show)
         if ref.kind == .show, let detail {
             let imdb = detail.summary.ref.imdbID
             resume = await env.resumeTarget(showID: ref.tmdbID, imdbID: imdb)
@@ -68,6 +70,7 @@ final class DetailModel {
 struct DetailView: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(PlayFlow.self) private var flow
+    @Environment(PlaybackController.self) private var playback
     let summary: TitleSummary
     @State private var model = DetailModel()
     @State private var trailerMessage: String?
@@ -83,7 +86,7 @@ struct DetailView: View {
                     actions
                     if ref.kind == .show { episodesSection }
                     if !model.offers.isEmpty { providersRow }
-                    if let trailers = model.detail?.trailers, !trailers.isEmpty { trailersRow(trailers) }
+                    if model.trailerURL == nil, let trailers = model.detail?.trailers, !trailers.isEmpty { trailersRow(trailers) }
                     if let cast = model.detail?.cast, !cast.isEmpty { castRow(cast) }
                 }
                 .padding(.horizontal, Metrics.gutter)
@@ -142,6 +145,12 @@ struct DetailView: View {
             .accessibilityLabel("Favorite")
             if ref.kind == .movie || model.resume != nil {
                 Button("Choose Stream") { Task { await play(forcePicker: true) } }
+            }
+            if let trailer = model.trailerURL {
+                Button { Task { await playback.playTrailer(url: trailer, title: summary.title, ref: ref, env: env) } } label: {
+                    Label("Trailer", systemImage: "film")
+                }
+                .accessibilityIdentifier("detail.trailer")
             }
             if ref.kind == .movie {
                 Button("Mark Watched") { Task { await model.markWatched([ref], runtimeMinutes: model.detail?.runtimeMinutes, env: env) } }
@@ -208,7 +217,7 @@ struct DetailView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(alignment: .bottom) { if let progress, !progress.isCompleted { ProgressBar(fraction: progress.fraction).padding(8) } }
                     .overlay(alignment: .topTrailing) { if progress?.isCompleted == true { Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.accent).padding(8) } }
-                Text("\(episode.number). \(episode.name)").font(.caption).lineLimit(1)
+                MarqueeText(text: "\(episode.number). \(episode.name)")
                 Text(unaired ? "Airs \(episode.airDate?.formatted(date: .abbreviated, time: .omitted) ?? "soon")" : (formatRuntime(episode.runtimeMinutes) ?? ""))
                     .font(.caption2).foregroundStyle(.secondary)
             }
@@ -266,7 +275,7 @@ struct DetailView: View {
 
     private func trailersRow(_ trailers: [Trailer]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Trailers").font(.title3.bold())
+            Text("Trailers (opens YouTube)").font(.title3.bold())
             HRow {
                 LazyHStack(spacing: Metrics.rowSpacing) {
                     ForEach(trailers.prefix(6)) { trailer in
@@ -276,7 +285,7 @@ struct DetailView: View {
                                     .frame(width: Metrics.still.width, height: Metrics.still.height)
                                     .clipShape(RoundedRectangle(cornerRadius: 10))
                                     .overlay(Image(systemName: "play.circle.fill").font(.largeTitle).foregroundStyle(.white.opacity(0.9)))
-                                Text(trailer.name).font(.caption).lineLimit(1).frame(width: Metrics.still.width, alignment: .leading)
+                                MarqueeText(text: trailer.name).frame(width: Metrics.still.width, alignment: .leading)
                             }
                         }
                         .cardButtonStyle()

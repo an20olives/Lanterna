@@ -68,7 +68,7 @@ struct PosterGridCell: View {
             RemoteImage(url: TMDBImage.url(summary.posterPath, .poster), placeholder: summary.title)
                 .frame(width: Metrics.poster.width, height: Metrics.poster.height)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
-            Text(summary.title).font(.caption).lineLimit(1).frame(width: Metrics.poster.width, alignment: .leading)
+            MarqueeText(text: summary.title).frame(width: Metrics.poster.width, alignment: .leading)
         }
     }
 }

@@ -19,6 +19,10 @@ Parity against `replica/features.csv`: 65.4 of 100 (`replica/parity.md`). Every 
 
 Hero carousel, shelf editor (filters, TMDB lists, Trakt lists), person page, trailers row (opens the YouTube app), Skip Intro and recap skip from Jellyfin media segments, external subtitles from the stream source (served by Engine A as an extra rendition, passed to KSPlayer on C), subtitle size, colour, background and timing, Jellyfin remote-address fallback, Settings search, TorBox account check (`Settings > Sources and keys`, or `scripts/torbox-check.sh`).
 
+## Polish pass (from on-TV testing)
+
+Opaque stream picker, edge-to-edge rows that no longer clip focus rings, a rounded hero card that lands focus from the tab bar, scrolling text on focused items, trailers that play in the player (Apple's iTunes preview URLs; the YouTube row appears only when no preview exists), the app icon (`scripts/make-icons.py`), clearer stream cards.
+
 ## Not done
 
 Jellyfin trickplay, custom lists, downloads, release notifications, subtitle position, MDBList and Letterboxd lists. See the Missing list in `replica/parity.md`.

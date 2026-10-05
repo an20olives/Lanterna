@@ -24,6 +24,7 @@ final class AppEnvironment {
     private(set) var hasDevMedia = false
     /// Bumps whenever sources or credentials change so views reload.
     var revision = 0
+    let itunes = ITunesPreviewClient()
     var lastSync: Date?
     var deviceName: String = "Apple TV"
     /// tvOS sets this to show the P0 player lab from Settings.

@@ -106,8 +106,8 @@ struct HomeView: View {
     @State private var path: [TitleSummary] = []
     @State private var seeAll: HomeShelf?
     @State private var atTop = true
-    #if os(tvOS)
     @Namespace private var homeScope
+    #if os(tvOS)
     @Environment(\.resetFocus) private var resetFocus
     #endif
 
@@ -155,7 +155,7 @@ struct HomeView: View {
                     .padding(.horizontal, Metrics.gutter)
                 }
                 if env.config.heroEnabled, !model.heroItems.isEmpty {
-                    HeroCarousel(items: model.heroItems, onDetails: { path.append($0) }, onPlay: { item in
+                    HeroCarousel(items: model.heroItems, scope: homeScope, onDetails: { path.append($0) }, onPlay: { item in
                         Task { await flow.start(ref: item.ref, displayTitle: item.title, forcePicker: false, env: env) }
                     })
                 }
@@ -183,7 +183,7 @@ struct HomeView: View {
                                     .frame(width: Metrics.still.width, height: Metrics.still.height)
                                     .clipShape(RoundedRectangle(cornerRadius: 12))
                                     .overlay(alignment: .bottom) { ProgressBar(fraction: item.snapshot.fraction).padding(10) }
-                                Text(item.summary.title).font(.caption).lineLimit(1)
+                                MarqueeText(text: item.summary.title)
                                 Text([item.subtitle, remaining(item.snapshot)].compactMap { $0 }.joined(separator: " · "))
                                     .font(.caption2).foregroundStyle(.secondary)
                             }

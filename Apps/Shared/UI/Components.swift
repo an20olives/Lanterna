@@ -72,7 +72,7 @@ struct PosterCard: View {
                                 .background(Theme.accent, in: Capsule()).foregroundStyle(.black).padding(8)
                         }
                     }
-                Text(summary.title).font(.caption).lineLimit(1).frame(width: Metrics.poster.width, alignment: .leading)
+                MarqueeText(text: summary.title).frame(width: Metrics.poster.width, alignment: .leading)
             }
         }
         .cardButtonStyle()
@@ -181,5 +181,39 @@ struct HRow<Content: View>: View {
         }
         .scrollClipDisabled()
         .padding(.horizontal, -Metrics.gutter)
+    }
+}
+
+/// One line of text that ellipsizes normally and, while its button has focus, scrolls to show the rest.
+struct MarqueeText: View {
+    @Environment(\.isFocused) private var isFocused
+    let text: String
+    var font: Font = .caption
+    var color: Color = .primary
+    @State private var textWidth: CGFloat = 0
+    @State private var boxWidth: CGFloat = 0
+    @State private var moving = false
+
+    private var overflow: CGFloat { max(0, textWidth - boxWidth) }
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            if isFocused && overflow > 1 {
+                Text(text).font(font).foregroundStyle(color).lineLimit(1).fixedSize()
+                    .offset(x: moving ? -(overflow + 24) : 0)
+                    .animation(moving ? .linear(duration: Double(overflow + 24) / 40).delay(0.8).repeatForever(autoreverses: true) : .default, value: moving)
+                    .onAppear { moving = true }
+                    .onDisappear { moving = false }
+            } else {
+                Text(text).font(font).foregroundStyle(color).lineLimit(1)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .clipped()
+        .background(GeometryReader { box in Color.clear.onAppear { boxWidth = box.size.width }.onChange(of: box.size.width) { _, new in boxWidth = new } })
+        .background(
+            Text(text).font(font).lineLimit(1).fixedSize().hidden()
+                .background(GeometryReader { size in Color.clear.onAppear { textWidth = size.size.width }.onChange(of: text) { textWidth = size.size.width } })
+        )
     }
 }

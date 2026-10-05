@@ -176,7 +176,7 @@ struct StreamCard: View {
         HStack(alignment: .firstTextBaseline, spacing: 20) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(summary).font(.headline).lineLimit(1)
-                Text(candidate.displayName).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                MarqueeText(text: candidate.displayName, color: .secondary)
                 if case .unavailable(let reason) = candidate.availability { Text(reason).font(.caption).foregroundStyle(.red) }
             }
             Spacer(minLength: 12)

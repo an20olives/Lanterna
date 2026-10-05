@@ -229,3 +229,50 @@ struct TorBoxAccountTests {
         await #expect(throws: (any Error).self) { _ = try await TorBoxClient(apiKey: "BAD", transport: transport).account() }
     }
 }
+
+struct ITunesPreviewTests {
+    static let movies = """
+    {"resultCount":3,"results":[
+      {"trackName":"The Matrix Reloaded","releaseDate":"2003-05-15T07:00:00Z","previewUrl":"https://video.example.com/reloaded.m4v"},
+      {"trackName":"The Matrix","releaseDate":"1999-03-31T08:00:00Z","previewUrl":"https://video.example.com/matrix.m4v"},
+      {"trackName":"The Matrix","releaseDate":"2021-12-01T08:00:00Z","previewUrl":"https://video.example.com/matrix-doc.m4v"}]}
+    """
+    static let shows = """
+    {"resultCount":3,"results":[
+      {"collectionName":"Breaking Bad, Season 2","previewUrl":"https://video.example.com/bb2.m4v"},
+      {"collectionName":"Breaking Bad, Season 1","previewUrl":"https://video.example.com/bb1.m4v"},
+      {"collectionName":"Better Call Saul, Season 1","previewUrl":"https://video.example.com/bcs.m4v"}]}
+    """
+
+    func client(_ body: String) -> (ITunesPreviewClient, ScriptedTransport) {
+        let transport = ScriptedTransport { _ in .init(body: body) }
+        return (ITunesPreviewClient(http: HTTPClient(transport: transport, maxRetries: 0, sleep: { _ in })), transport)
+    }
+
+    @Test func moviePreviewMatchesTitleAndYear() async throws {
+        let (client, transport) = client(Self.movies)
+        let url = try await client.previewURL(title: "The Matrix", year: 1999, kind: .movie)
+        #expect(url?.lastPathComponent == "matrix.m4v")
+        let request = try #require(transport.requests.first?.url)
+        #expect(request.host() == "itunes.apple.com")
+        #expect(request.query?.contains("entity=movie") == true)
+        #expect(request.query?.contains("term=The") == true)
+    }
+
+    @Test func noMatchingYearMeansNoPreviewRatherThanTheWrongFilm() async throws {
+        let (client, _) = client(Self.movies)
+        #expect(try await client.previewURL(title: "The Matrix", year: 2010, kind: .movie) == nil)
+        #expect(try await client.previewURL(title: "Something Else", year: 1999, kind: .movie) == nil)
+    }
+
+    @Test func showPreviewPicksTheEarliestSeasonOfThatShow() async throws {
+        let (client, _) = client(Self.shows)
+        let url = try await client.previewURL(title: "Breaking Bad", year: 2008, kind: .show)
+        #expect(url?.lastPathComponent == "bb1.m4v")
+    }
+
+    @Test func punctuationAndCaseDoNotBreakMatching() {
+        #expect(ITunesPreviewClient.normalize("Spider-Man: No Way Home!") == ITunesPreviewClient.normalize("spider man no way home"))
+        #expect(ITunesPreviewClient.normalize("  The   Matrix ") == "the matrix")
+    }
+}

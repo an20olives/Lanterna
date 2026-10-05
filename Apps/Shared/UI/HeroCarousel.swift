@@ -1,13 +1,18 @@
 import LanternaKit
 import SwiftUI
 
-/// Optional featured strip at the top of Home. Cycles every eight seconds; on tvOS move left or right to change.
+/// Optional featured strip at the top of Home.
+/// The buttons stay put when the slide changes (rebuilding them dropped focus). On tvOS, pressing left on the first
+/// button or right on the last one changes the slide; the slide also advances by itself unless a button has focus.
 struct HeroCarousel: View {
     let items: [TitleSummary]
+    var scope: Namespace.ID
     let onDetails: (TitleSummary) -> Void
     let onPlay: (TitleSummary) -> Void
     @State private var index = 0
-    @State private var paused = false
+    @FocusState private var focus: Field?
+
+    private enum Field { case play, details }
 
     #if os(tvOS)
     private let height: CGFloat = 560
@@ -15,19 +20,30 @@ struct HeroCarousel: View {
     private let height: CGFloat = 320
     #endif
 
+    private var item: TitleSummary? { items.indices.contains(index) ? items[index] : items.first }
+
     var body: some View {
-        if let item = items.indices.contains(index) ? items[index] : items.first {
+        if let item {
+            let hasPlay = item.ref.kind == .movie
             ZStack(alignment: .bottomLeading) {
                 RemoteImage(url: TMDBImage.url(item.backdropPath ?? item.posterPath, .backdrop), placeholder: "")
+                    .id(item.id)
+                    .transition(.opacity)
                     .frame(height: height).clipped()
                     .overlay(LinearGradient(colors: [.clear, .black.opacity(0.85)], startPoint: .center, endPoint: .bottom))
                     .overlay(LinearGradient(colors: [.black.opacity(0.6), .clear], startPoint: .leading, endPoint: .center))
                 VStack(alignment: .leading, spacing: 12) {
                     Text(item.title).font(.largeTitle.bold()).lineLimit(1)
-                    if let overview = item.overview { Text(overview).lineLimit(2).frame(maxWidth: 800, alignment: .leading).foregroundStyle(.secondary) }
+                    Text(item.overview ?? " ").lineLimit(2).frame(maxWidth: 800, alignment: .leading).foregroundStyle(.secondary)
                     HStack(spacing: 16) {
-                        if item.ref.kind == .movie { Button { onPlay(item) } label: { Label("Play", systemImage: "play.fill") } }
+                        if hasPlay {
+                            Button { onPlay(item) } label: { Label("Play", systemImage: "play.fill") }
+                                .focused($focus, equals: .play)
+                                .accessibilityIdentifier("hero.play")
+                        }
                         Button("Details") { onDetails(item) }
+                            .focused($focus, equals: .details)
+                            .accessibilityIdentifier("hero.details")
                         Spacer().frame(width: 20)
                         HStack(spacing: 8) {
                             ForEach(items.indices, id: \.self) { dot in
@@ -38,25 +54,27 @@ struct HeroCarousel: View {
                 }
                 .padding(36)
             }
+            .frame(height: height)
             .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
             .padding(.horizontal, Metrics.gutter)
-            .id(item.id)
-            .transition(.opacity)
+            .focusSectionIfTV()
+            .defaultFocus($focus, hasPlay ? .play : .details)
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("hero")
             #if os(tvOS)
             .onMoveCommand { direction in
-                switch direction {
-                case .left: step(-1)
-                case .right: step(1)
-                default: break
-                }
+                let firstButton: Field = hasPlay ? .play : .details
+                if direction == .left, focus == firstButton { step(-1) }
+                else if direction == .right, focus == .details { step(1) }
             }
             #else
             .gesture(DragGesture(minimumDistance: 30).onEnded { value in step(value.translation.width < 0 ? 1 : -1) })
             #endif
-            .task(id: index) {
-                try? await Task.sleep(for: .seconds(8))
-                if !Task.isCancelled { step(1) }
+            .task {
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(8))
+                    if focus == nil { step(1) }
+                }
             }
         }
     }

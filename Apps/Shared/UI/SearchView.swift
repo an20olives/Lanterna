@@ -78,6 +78,7 @@ struct SearchView: View {
                 }
                 .padding(.horizontal, Metrics.gutter)
             }
+            .scrollClipDisabled()
         }
     }
 
