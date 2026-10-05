@@ -146,10 +146,15 @@ struct StreamPickerView: View {
                 }
             }
             .navigationTitle(flow.heading)
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { flow.cancel() } } }
+            #endif
         }
         // A cover is see-through by default, which let Home bleed behind the picker.
         .background(Color.black.ignoresSafeArea())
         .presentationBackground(.black)
+        .tint(Theme.accent)
         #if os(tvOS)
         .onExitCommand { flow.cancel() }
         #endif
@@ -161,6 +166,9 @@ struct StreamPickerView: View {
                 Section(Self.name(group.kind)) {
                     ForEach(group.items) { candidate in
                         Button { Task { await flow.choose(candidate, env: env) } } label: { StreamCard(candidate: candidate) }
+                            #if os(iOS)
+                            .buttonStyle(.plain)
+                            #endif
                             .disabled(candidate.availability != .playable)
                     }
                 }
@@ -198,8 +206,13 @@ struct StreamCard: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 20) {
             VStack(alignment: .leading, spacing: 6) {
+                #if os(iOS)
+                Text(summary).font(.subheadline.bold()).fixedSize(horizontal: false, vertical: true)
+                Text(candidate.displayName).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                #else
                 Text(summary).font(.headline).lineLimit(1)
                 MarqueeText(text: candidate.displayName, color: .secondary)
+                #endif
                 if case .unavailable(let reason) = candidate.availability { Text(reason).font(.caption).foregroundStyle(.red) }
             }
             Spacer(minLength: 12)
@@ -207,7 +220,10 @@ struct StreamCard: View {
                 Image(systemName: "checkmark.circle.fill").foregroundStyle(.green).accessibilityLabel("Ready")
             }
             if let size = formatSize(candidate.sizeBytes) {
-                Text(size).foregroundStyle(.secondary).frame(minWidth: 110, alignment: .trailing)
+                Text(size).foregroundStyle(.secondary)
+                    #if os(tvOS)
+                    .frame(minWidth: 110, alignment: .trailing)
+                    #endif
             }
         }
         .padding(.vertical, 6)
