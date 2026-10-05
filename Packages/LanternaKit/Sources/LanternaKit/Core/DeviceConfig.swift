@@ -76,6 +76,21 @@ public enum ShelfQuery: Codable, Sendable, Hashable {
     case tmdbList(Int)
     case jellyfinCollection(String)
     case aiostreamsCatalog(String)
+    case mdblist(String)
+    case letterboxd(String)
+    case customList(UUID)
+}
+
+/// A list the user builds by hand. Holds title keys (`movie:603`) in the order they were added.
+public struct CustomList: Codable, Sendable, Hashable, Identifiable {
+    public var id: UUID
+    public var name: String
+    public var titleKeys: [String]
+    public init(id: UUID = UUID(), name: String, titleKeys: [String] = []) {
+        self.id = id
+        self.name = name
+        self.titleKeys = titleKeys
+    }
 }
 
 public struct ShelfConfig: Codable, Sendable, Hashable, Identifiable {
@@ -152,6 +167,7 @@ public struct DeviceConfig: Codable, Sendable, Hashable {
     public var streamPrefs = StreamPrefs()
     public var playerPrefs = PlayerPrefs()
     public var heroEnabled = true
+    public var customLists: [CustomList] = []
 
     public init() {}
 
@@ -165,6 +181,7 @@ public struct DeviceConfig: Codable, Sendable, Hashable {
         streamPrefs = try c.decodeIfPresent(StreamPrefs.self, forKey: .streamPrefs) ?? StreamPrefs()
         playerPrefs = try c.decodeIfPresent(PlayerPrefs.self, forKey: .playerPrefs) ?? PlayerPrefs()
         heroEnabled = try c.decodeIfPresent(Bool.self, forKey: .heroEnabled) ?? true
+        customLists = try c.decodeIfPresent([CustomList].self, forKey: .customLists) ?? []
     }
 
     public func validated() -> DeviceConfig {

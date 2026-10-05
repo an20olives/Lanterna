@@ -162,6 +162,7 @@ struct DetailView: View {
                 .accessibilityIdentifier("detail.trailer")
             }
             Menu {
+                Menu("Add to list", systemImage: "text.badge.plus") { listButtons }
                 if ref.kind == .movie || model.resume != nil {
                     Button("Choose Stream", systemImage: "list.bullet") { Task { await play(forcePicker: true) } }
                 }
@@ -189,6 +190,19 @@ struct DetailView: View {
     }
     #endif
 
+    @ViewBuilder private var listButtons: some View {
+        if env.config.customLists.isEmpty {
+            Text("Create a list in Settings, Home screen.")
+        }
+        ForEach(env.config.customLists) { list in
+            Button {
+                env.toggleInCustomList(list.id, key: ref.key)
+            } label: {
+                Label(list.name, systemImage: env.isInCustomList(list.id, key: ref.key) ? "checkmark" : "plus")
+            }
+        }
+    }
+
     private var tvActions: some View {
         HStack(spacing: 20) {
             Button {
@@ -205,6 +219,8 @@ struct DetailView: View {
                 Image(systemName: model.isFavorite ? "heart.fill" : "heart")
             }
             .accessibilityLabel("Favorite")
+            Menu { listButtons } label: { Image(systemName: "text.badge.plus") }
+                .accessibilityLabel("Add to list")
             if ref.kind == .movie || model.resume != nil {
                 Button("Choose Stream") { Task { await play(forcePicker: true) } }
             }

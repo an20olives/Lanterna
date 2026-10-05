@@ -83,6 +83,15 @@ final class HomeModel {
             }
             for await (index, shelf) in group { if let shelf { loaded.append((index, shelf)) } }
         }
+        for (index, shelf) in configs.enumerated() {
+            let items: [TitleSummary]
+            switch shelf.query {
+            case .mdblist, .letterboxd: items = await env.externalList(shelf.query)
+            case .customList(let id): items = await env.customListItems(id)
+            default: continue
+            }
+            if !items.isEmpty { loaded.append((index, HomeShelf(id: shelf.id.uuidString, title: shelf.title, items: items))) }
+        }
         // Trakt lists need the signed-in client, which lives on the main actor.
         for (index, shelf) in configs.enumerated() {
             guard case .traktList(let path) = shelf.query else { continue }

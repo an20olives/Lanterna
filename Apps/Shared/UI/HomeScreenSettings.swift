@@ -55,6 +55,9 @@ struct HomeScreenSettingsView: View {
         case .traktList(let path): "Trakt list \(path)"
         case .jellyfinCollection: "Jellyfin collection"
         case .aiostreamsCatalog: "AIOStreams catalog"
+        case .mdblist(let path): "MDBList \(path)"
+        case .letterboxd(let path): "Letterboxd \(path)"
+        case .customList: "My list"
         }
     }
 
@@ -95,6 +98,9 @@ struct AddShelfView: View {
     @State private var language = ""
     @State private var listID = ""
     @State private var traktPath = ""
+    @State private var mdbPath = ""
+    @State private var letterboxdPath = ""
+    @State private var newListName = ""
     @State private var message: String?
 
     private let sorts = [("Popularity", "popularity.desc"), ("Rating", "vote_average.desc"), ("Newest", "primary_release_date.desc")]
@@ -139,6 +145,29 @@ struct AddShelfView: View {
                     add(ShelfConfig(title: traktPath, query: .traktList(traktPath)))
                 }
                 .disabled(traktPath.isEmpty)
+                TextField("MDBList as user/list-name", text: $mdbPath).autocorrectionDisabled()
+                Button("Add MDBList list") {
+                    guard mdbPath.split(separator: "/").count == 2 else { message = "Use the form user/list-name."; return }
+                    add(ShelfConfig(title: mdbPath, query: .mdblist(mdbPath)))
+                }
+                .disabled(mdbPath.isEmpty)
+                TextField("Letterboxd as user/list-name", text: $letterboxdPath).autocorrectionDisabled()
+                Button("Add Letterboxd list") {
+                    guard letterboxdPath.split(separator: "/").count == 2 else { message = "Use the form user/list-name."; return }
+                    add(ShelfConfig(title: letterboxdPath, query: .letterboxd(letterboxdPath)))
+                }
+                .disabled(letterboxdPath.isEmpty)
+            }
+            Section("My lists") {
+                TextField("New list name", text: $newListName)
+                Button("Create list") {
+                    let name = newListName.trimmingCharacters(in: .whitespaces)
+                    guard !name.isEmpty else { return }
+                    env.createCustomList(named: name)
+                    dismiss()
+                }
+                .disabled(newListName.trimmingCharacters(in: .whitespaces).isEmpty)
+                Text("Add titles from any detail page with the List button.").font(.caption).foregroundStyle(.secondary)
             }
             if let message { Text(message).foregroundStyle(.orange) }
         }

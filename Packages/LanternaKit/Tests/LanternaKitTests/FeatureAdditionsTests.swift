@@ -276,3 +276,38 @@ struct ITunesPreviewTests {
         #expect(ITunesPreviewClient.normalize("  The   Matrix ") == "the matrix")
     }
 }
+
+struct ExternalListTests {
+    @Test func mdblistReadsTMDBIDsAndKinds() async throws {
+        let transport = ScriptedTransport.routes([("mdblist.com/lists/u/best/json", #"[{"id":603,"title":"The Matrix","mediatype":"movie","release_year":1999},{"id":1396,"title":"Breaking Bad","mediatype":"show","release_year":2008}]"#)])
+        let client = ExternalListClient(http: HTTPClient(transport: transport, maxRetries: 0, sleep: { _ in }))
+        let entries = try await client.mdblist(path: "u/best")
+        #expect(entries.map(\.tmdbID) == [603, 1396])
+        #expect(entries.map(\.kind) == [.movie, .show])
+    }
+
+    @Test func letterboxdParsesTitleAndYear() {
+        let html = #"<div data-item-name="Harakiri (1962)" data-item-slug="harakiri"></div><div data-item-name="Tom &amp; Jerry (2021)"></div><div data-item-name="Harakiri (1962)"></div><div data-item-name="No Year"></div>"#
+        let entries = ExternalListClient.parseLetterboxd(html, limit: 10)
+        #expect(entries.map(\.title) == ["Harakiri", "Tom & Jerry", "No Year"])
+        #expect(entries.map(\.year) == [1962, 2021, nil])
+    }
+
+    @Test func letterboxdURLUsesListPath() async throws {
+        let transport = ScriptedTransport { _ in .init(body: #"<div data-item-name="Heat (1995)"></div>"#) }
+        let client = ExternalListClient(http: HTTPClient(transport: transport, maxRetries: 0, sleep: { _ in }))
+        let entries = try await client.letterboxd(path: "dave/official-top-250")
+        #expect(entries.first?.title == "Heat")
+        #expect(transport.requests.first?.url?.absoluteString == "https://letterboxd.com/dave/list/official-top-250/")
+    }
+
+    @Test func customListsSurviveConfigRoundTripAndOldConfigsLoad() throws {
+        var config = DeviceConfig()
+        config.customLists = [CustomList(name: "Weekend", titleKeys: ["movie:603"])]
+        config.shelves = [ShelfConfig(title: "Weekend", query: .customList(config.customLists[0].id))]
+        let back = try JSONDecoder().decode(DeviceConfig.self, from: JSONEncoder().encode(config))
+        #expect(back.customLists.first?.titleKeys == ["movie:603"])
+        let old = try JSONDecoder().decode(DeviceConfig.self, from: Data(#"{"version":1}"#.utf8))
+        #expect(old.customLists.isEmpty)
+    }
+}
