@@ -1,6 +1,6 @@
 # Lanterna
 
-A personal media hub for Apple TV and iPhone. One owner, sideloaded only, never on the App Store.
+A personal media hub for Apple TV, iPhone and Mac. One owner, sideloaded only, never on the App Store.
 
 Lanterna browses titles from TMDB, finds streams through an AIOStreams (Stremio addon) config backed by a debrid service, plays your own TorBox and Jellyfin libraries, and keeps watch progress in sync across devices through Trakt.
 
@@ -14,7 +14,7 @@ Lanterna browses titles from TMDB, finds streams through an AIOStreams (Stremio 
 ## Layout
 
 ```
-Apps/            SwiftUI shells: Shared, iOS, tvOS (plus the P0 player lab)
+Apps/            SwiftUI shells: Shared, iOS, tvOS (plus the P0 player lab), macOS
 Packages/
   LanternaKit/     models, sources, networking, Keychain, SwiftData, Trakt sync, pairing
   LanternaPlayer/  PlaybackRouter, Engine A (remux to HLS), Engine C (KSPlayer)
@@ -32,6 +32,7 @@ xcodegen generate
 swift test --package-path Packages/LanternaKit
 xcodebuild test -scheme Lanterna-tvOS -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation)'
 make ipa-tvos   # build/Lanterna-tvOS.ipa, unsigned
+make app-macos  # build/Lanterna.app, ad hoc signed; make install-macos copies it to /Applications
 make ipa-ios    # build/Lanterna-iOS.ipa, unsigned
 ```
 

@@ -23,9 +23,19 @@ Hero carousel, shelf editor (filters, TMDB lists, Trakt lists), person page, tra
 
 Opaque stream picker, edge-to-edge rows that no longer clip focus rings, a rounded hero card that lands focus from the tab bar, scrolling text on focused items, trailers that play in the player (Apple's iTunes preview URLs; the YouTube row appears only when no preview exists), the app icon (`scripts/make-icons.py`), clearer stream cards.
 
+## Third pass
+
+- **Custom lists** (`Settings > Home screen > My lists`, "Add to list" on any detail page), **MDBList** and **Letterboxd** public lists as shelves (MDBList by keyless JSON, Letterboxd by reading the list page and matching title and year on TMDB; fragile if Letterboxd changes its markup).
+- **Release notifications** on iPhone and Mac: local notifications at 9 am on the day of a watchlist or favourite title's next episode or release. Off by default (`Settings > Home screen`).
+- **Subtitle position** (`Settings > Video player`): lifts subtitles off the bottom edge. Engine A via CoreMedia text markup, Engine C via KSPlayer's margin. Not yet seen on a real subtitled stream.
+- **Jellyfin trickplay**: scrub thumbnails published to AVPlayer as an HLS image playlist on Engine A. Unit tested; needs a Jellyfin 10.9+ server and the real Apple TV to confirm the thumbnails show.
+- **Downloads** (iPhone and Mac): background URLSession, files in Application Support, offline playback through a loopback file server so the normal remux path is reused. Verified in the simulator for an MP4 (download, then play from disk); the MKV path is unit tested only.
+- **macOS app** (`Lanterna-macOS`, `make app-macos`, `make install-macos`): Engine A in an `AVPlayerView`, Engine C in an `NSHostingController`, sandboxed, ad hoc signed. Builds and the packages' tests pass, but the window has not been looked at: the session that built it had no display. Expect layout fixes.
+- Fixes: the BrowseToPlay UI test no longer races the detail page's focus, iPhone stream picker layout and tint, playback retry stops when cancelled, zero first-party compiler warnings.
+
 ## Not done
 
-Jellyfin trickplay, custom lists, downloads, release notifications, subtitle position, MDBList and Letterboxd lists. See the Missing list in `replica/parity.md`.
+MDBList and Letterboxd need no key but have no editor beyond a path field. Downloads have no queue limits or storage screen. Mac: no menu commands, no keyboard shortcuts, no pairing sender, hero strip uses the Apple TV layout. See the Missing list in `replica/parity.md`.
 
 ## Blocked on you
 
@@ -46,6 +56,9 @@ Jellyfin trickplay, custom lists, downloads, release notifications, subtitle pos
 ```
 make ipa-tvos        # build/Lanterna-tvOS.ipa, unsigned
 make ipa-ios         # build/Lanterna-iOS.ipa, unsigned
+make app-macos       # build/Lanterna.app + build/Lanterna-macOS.zip, ad hoc signed
+make install-macos   # copies it to /Applications
+scripts/push-tv.sh   # build, sign with the Personal Team, install on the Apple TV with devicectl
 swift test --package-path Packages/LanternaKit
 cd Packages/LanternaPlayer && xcodebuild test -scheme LanternaPlayer-Package -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation)' -derivedDataPath .build/xcode
 xcodebuild test -scheme Lanterna-tvOS -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation)'
