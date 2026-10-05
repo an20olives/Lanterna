@@ -109,7 +109,7 @@ final class PlaybackController {
             var attempts = 0
             while prepared.record.probe == nil, Self.isNetworkFailure(prepared.record.failure), attempts < 2 {
                 attempts += 1
-                try? await Task.sleep(for: .seconds(1.5))
+                try await Task.sleep(for: .seconds(1.5))
                 if let source, request.directURL == nil, let fresh = try? await source.resolve(request.candidate.locatorHint) { current = fresh }
                 prepared = try await router.prepare(url: current.url, context: context, externalSubtitles: external)
             }
@@ -121,13 +121,11 @@ final class PlaybackController {
                 return
             }
             await logRoute(prepared, outcome: "opening")
-            // A failed probe with no playable route is reported, not played blind.
-            if prepared.record.probe == nil, prepared.record.failure != nil, prepared.decision.engine == .c, prepared.record.decision.reasons.contains(.probeFailed) {
-                // Engine C can still try the raw link, so continue.
-            }
             let session = router.makeSession(for: prepared, startTime: request.startAt, title: request.displayTitle, appearance: env.subtitleAppearance)
             attach(session)
             startTicker()
+        } catch is CancellationError {
+            return
         } catch let error as SourceError where error == .needsCredentials {
             errorMessage = "The source rejected the login. Check it in Settings."
         } catch {

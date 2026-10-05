@@ -186,8 +186,3 @@ struct MediaLibraryView: View {
         return .movie(tmdbID: -(abs(hash) % 1_000_000_000) - 1, imdbID: nil)
     }
 }
-
-extension OwnedItem: Hashable {
-    public static func == (lhs: OwnedItem, rhs: OwnedItem) -> Bool { lhs.id == rhs.id }
-    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
-}

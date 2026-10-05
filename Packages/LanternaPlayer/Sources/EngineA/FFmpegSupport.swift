@@ -14,7 +14,7 @@ public struct FFmpegError: Error, CustomStringConvertible, Sendable {
     static func message(_ code: Int32) -> String {
         var buffer = [CChar](repeating: 0, count: 256)
         av_strerror(code, &buffer, buffer.count)
-        return String(cString: buffer)
+        return String(decoding: buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }, as: UTF8.self)
     }
 
     @discardableResult

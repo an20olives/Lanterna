@@ -57,7 +57,7 @@ struct DebugRouteView: View {
                 }
                 .padding(Metrics.gutter)
             case ("person", let id?): PersonView(route: PersonRoute(id: Int(id) ?? 0, name: "", profilePath: nil))
-            case ("detail", let kind?):
+            case ("detail", _?):
                 if let summary { DetailView(summary: summary) } else { ProgressView() }
             default: Text("Unknown route \(route)")
             }

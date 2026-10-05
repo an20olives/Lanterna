@@ -259,7 +259,7 @@ public struct SubtitleCandidate: Identifiable, Sendable {
     }
 }
 
-public struct OwnedItem: Identifiable, Sendable {
+public struct OwnedItem: Identifiable, Sendable, Hashable {
     public var id: String
     public var sourceID: SourceID
     public var title: String
@@ -283,6 +283,11 @@ public struct OwnedItem: Identifiable, Sendable {
         self.matched = matched
         self.files = files
     }
+}
+
+extension OwnedItem {
+    public static func == (lhs: OwnedItem, rhs: OwnedItem) -> Bool { lhs.id == rhs.id }
+    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
 public struct LibraryFile: Identifiable, Sendable {
