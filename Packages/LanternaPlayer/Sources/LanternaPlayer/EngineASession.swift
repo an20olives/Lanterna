@@ -1,15 +1,30 @@
-#if canImport(UIKit)
+#if canImport(UIKit) || canImport(AppKit)
 import AVKit
 import CoreMedia
 import EngineA
 import PlayerCore
+#if canImport(UIKit)
 import UIKit
+#else
+import AppKit
+
+/// The Mac's AVKit player is a view, not a controller. This wraps it so Engine A hands out the same kind of object on every platform.
+final class MacPlayerViewController: NSViewController {
+    let playerView = AVPlayerView()
+
+    override func loadView() {
+        playerView.controlsStyle = .floating
+        playerView.showsFullScreenToggleButton = true
+        view = playerView
+    }
+}
+#endif
 
 /// Engine A (and A-direct): AVPlayerViewController, so every native tvOS player feature stays intact.
 @MainActor
 public final class EngineASession: NSObject, PlaybackSession {
     public let engine: EngineID
-    public let viewController: UIViewController
+    public let viewController: PlayerViewController
     public let events: AsyncStream<PlaybackEvent>
     /// Called when the viewer picks an image subtitle (PGS) that only Engine C can show: (stream index, current time).
     public var onImageSubtitleRequest: ((Int, Double) -> Void)?
@@ -17,7 +32,13 @@ public final class EngineASession: NSObject, PlaybackSession {
     let player: AVPlayer
     let item: AVPlayerItem
     let remux: RemuxSession?
+    #if canImport(UIKit)
     private let playerController = AVPlayerViewController()
+    #else
+    private let playerController = MacPlayerViewController()
+    private var skipButton: NSButton?
+    private var skipHandler: (@MainActor () -> Void)?
+    #endif
     private let continuation: AsyncStream<PlaybackEvent>.Continuation
     private let created = Date()
     private var observations: [NSKeyValueObservation] = []
@@ -25,7 +46,7 @@ public final class EngineASession: NSObject, PlaybackSession {
     private var firstFrameReported = false
     private var startTime: Double
     private var stalls = 0
-    #if !os(tvOS)
+    #if os(iOS)
     private var skipButton: UIButton?
     #endif
 
@@ -41,7 +62,12 @@ public final class EngineASession: NSObject, PlaybackSession {
         viewController = playerController
         super.init()
 
+        #if canImport(UIKit)
         playerController.player = player
+        #else
+        _ = playerController.view     // loads the AVPlayerView
+        playerController.playerView.player = player
+        #endif
         Self.apply(appearance, to: item)
         #if os(tvOS)
         playerController.appliesPreferredDisplayCriteriaAutomatically = true
@@ -72,6 +98,22 @@ public final class EngineASession: NSObject, PlaybackSession {
         } else {
             playerController.contextualActions = []
         }
+        #elseif os(macOS)
+        skipButton?.removeFromSuperview()
+        skipButton = nil
+        guard let title, let handler, let overlay = playerController.playerView.contentOverlayView else { return }
+        skipHandler = handler
+        let button = NSButton(title: title, target: self, action: #selector(skipPressed))
+        button.image = NSImage(systemSymbolName: "forward.end.fill", accessibilityDescription: nil)
+        button.imagePosition = .imageLeading
+        button.bezelStyle = .rounded
+        button.translatesAutoresizingMaskIntoConstraints = false
+        overlay.addSubview(button)
+        NSLayoutConstraint.activate([
+            button.trailingAnchor.constraint(equalTo: overlay.trailingAnchor, constant: -24),
+            button.bottomAnchor.constraint(equalTo: overlay.bottomAnchor, constant: -90),
+        ])
+        skipButton = button
         #else
         skipButton?.removeFromSuperview()
         skipButton = nil
@@ -93,6 +135,10 @@ public final class EngineASession: NSObject, PlaybackSession {
         skipButton = button
         #endif
     }
+
+    #if os(macOS)
+    @objc private func skipPressed() { skipHandler?() }
+    #endif
 
     #if os(tvOS)
     private func configureTVMetadata(prepared: PreparedPlayback, title: String?) {
@@ -131,6 +177,7 @@ public final class EngineASession: NSObject, PlaybackSession {
     #endif
 
     private func observe() {
+        #if canImport(UIKit)
         observations.append(playerController.observe(\.isReadyForDisplay, options: [.new]) { [weak self] controller, _ in
             MainActor.assumeIsolated {
                 guard let self, controller.isReadyForDisplay, !self.firstFrameReported else { return }
@@ -138,6 +185,15 @@ public final class EngineASession: NSObject, PlaybackSession {
                 self.continuation.yield(.firstFrame(millis: Int(Date().timeIntervalSince(self.created) * 1000)))
             }
         })
+        #else
+        observations.append(playerController.playerView.observe(\.isReadyForDisplay, options: [.new]) { [weak self] view, _ in
+            MainActor.assumeIsolated {
+                guard let self, view.isReadyForDisplay, !self.firstFrameReported else { return }
+                self.firstFrameReported = true
+                self.continuation.yield(.firstFrame(millis: Int(Date().timeIntervalSince(self.created) * 1000)))
+            }
+        })
+        #endif
         observations.append(item.observe(\.status, options: [.new]) { [weak self] item, _ in
             MainActor.assumeIsolated {
                 guard let self else { return }

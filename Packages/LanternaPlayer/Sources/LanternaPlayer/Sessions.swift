@@ -1,4 +1,4 @@
-#if canImport(UIKit)
+#if canImport(UIKit) || canImport(AppKit)
 import EngineC
 import Foundation
 import PlayerCore

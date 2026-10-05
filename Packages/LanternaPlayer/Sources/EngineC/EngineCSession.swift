@@ -1,9 +1,13 @@
-#if canImport(UIKit)
+#if canImport(UIKit) || canImport(AppKit)
 @preconcurrency import KSPlayer
 import PlayerCore
 import os
 import SwiftUI
+#if canImport(UIKit)
 import UIKit
+#else
+import AppKit
+#endif
 
 /// Engine C: KSPlayer's FFmpeg renderer (MEPlayer) with its SwiftUI controls.
 ///
@@ -12,7 +16,7 @@ import UIKit
 @MainActor
 public final class EngineCSession: PlaybackSession {
     public let engine: EngineID = .c
-    public let viewController: UIViewController
+    public let viewController: PlayerViewController
     public let events: AsyncStream<PlaybackEvent>
 
     private let continuation: AsyncStream<PlaybackEvent>.Continuation
@@ -50,7 +54,11 @@ public final class EngineCSession: PlaybackSession {
         }
 
         let view = KSVideoPlayerView(coordinator: coordinator, url: url, options: options, title: title)
+        #if canImport(UIKit)
         viewController = UIHostingController(rootView: view)
+        #else
+        viewController = NSHostingController(rootView: view)
+        #endif
 
         // KSVideoPlayerView installs its own onStateChanged on the shared coordinator and would replace ours,
         // so watch the layer's state directly.

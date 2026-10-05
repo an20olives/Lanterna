@@ -1,6 +1,5 @@
 import LanternaKit
 import SwiftUI
-import UIKit
 
 extension AppEnvironment {
     var deepLinks: DeepLinkArchive {
@@ -80,7 +79,7 @@ struct ServiceCards: View {
             return
         }
         Task {
-            if await UIApplication.shared.open(link.url) { message = nil } else { message = "\(offer.name) does not seem to be installed." }
+            if await openExternal(link.url) { message = nil } else { message = "\(offer.name) does not seem to be installed." }
         }
     }
 }

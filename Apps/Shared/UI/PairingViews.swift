@@ -82,7 +82,7 @@ struct PairingReceiverView: View {
                 ProgressView()
             case .waiting(let code, let qr):
                 Text("Open Lanterna on your iPhone, go to Settings, Pair Apple TV, and scan this code.").multilineTextAlignment(.center).frame(maxWidth: 800)
-                if let image = UIImage(data: qr) { Image(uiImage: image).interpolation(.none).resizable().frame(width: 360, height: 360).background(.white).accessibilityIdentifier("pairing.qr") }
+                if let image = PlatformImage(data: qr) { Image(platformImage: image).interpolation(.none).resizable().frame(width: 360, height: 360).background(.white).accessibilityIdentifier("pairing.qr") }
                 Text("Check that your iPhone shows \(code)").font(.title3).foregroundStyle(Theme.accent)
             case .receiving(let device):
                 ProgressView("Receiving from \(device)")
@@ -171,7 +171,7 @@ struct PairingSenderView: View {
                     QRScannerView { model.accept($0) }.frame(maxHeight: 360).clipShape(RoundedRectangle(cornerRadius: 16))
                 }
                 Text("Scan the code on your Apple TV.").foregroundStyle(.secondary)
-                TextField("Or paste the pairing link", text: $model.pasted).textInputAutocapitalization(.never).autocorrectionDisabled()
+                TextField("Or paste the pairing link", text: $model.pasted).neverCapitalize().autocorrectionDisabled()
                 Button("Use link") { model.accept(model.pasted) }.disabled(model.pasted.isEmpty)
             case .confirm(let invitation):
                 Text("Your Apple TV should show \(invitation.verificationCode)").font(.headline)
@@ -228,6 +228,10 @@ struct QRScannerView: UIViewControllerRepresentable {
 }
 #else
 struct PairingSenderView: View {
+    #if os(tvOS)
     var body: some View { Text("Open Lanterna on your iPhone to send settings to this Apple TV.").padding() }
+    #else
+    var body: some View { Text("Pair from your iPhone. On the Mac, enter your keys under Settings, Sources and keys.").padding() }
+    #endif
 }
 #endif

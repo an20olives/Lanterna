@@ -3,7 +3,6 @@ import LanternaKit
 import LanternaPlayer
 import Observation
 import PlayerCore
-import UIKit
 import os
 
 struct NextEpisode: Equatable {
@@ -33,7 +32,7 @@ final class PlaybackController {
         var secondsLeft: Int
     }
 
-    var presented: UIViewController?
+    var presented: PlayerViewController?
     var upNext: UpNext?
     var errorMessage: String?
     var isBusy = false

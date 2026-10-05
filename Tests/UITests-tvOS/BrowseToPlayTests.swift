@@ -26,11 +26,21 @@ final class BrowseToPlayTests: XCTestCase {
 
         let play = app.buttons["detail.play"]
         XCTAssertTrue(play.waitForExistence(timeout: 10), "detail page should open")
-        sleep(2)
-        remote.press(.select)
-
         let player = app.otherElements["player.host"]
-        XCTAssertTrue(player.waitForExistence(timeout: 60), "player should open after auto-select")
+        let searching = app.otherElements["picker.searching"]
+        // The detail page animates in and the first Select can land before focus settles. Wait for focus, press, and retry once if
+        // neither the stream search nor the player showed up.
+        for attempt in 1...3 where !(player.exists || searching.exists) {
+            let deadline = Date().addingTimeInterval(10)
+            while !play.hasFocus, Date() < deadline { sleep(1) }
+            sleep(1)
+            remote.press(.select)
+            _ = searching.waitForExistence(timeout: 6) || player.waitForExistence(timeout: 1)
+            if attempt == 3 { break }
+        }
+        let opened = player.waitForExistence(timeout: 60)
+        if !opened { print("UI DUMP:\n" + app.debugDescription) }
+        XCTAssertTrue(opened, "player should open after auto-select")
         sleep(8)
         remote.press(.menu)
 

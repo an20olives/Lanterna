@@ -26,12 +26,18 @@ public struct PlaybackDiagnostics: Codable, Sendable, Equatable {
 
 #if canImport(UIKit)
 import UIKit
+public typealias PlayerViewController = UIViewController
+#elseif canImport(AppKit)
+import AppKit
+public typealias PlayerViewController = NSViewController
+#endif
 
+#if canImport(UIKit) || canImport(AppKit)
 /// One playing stream, whichever engine renders it.
 @MainActor
 public protocol PlaybackSession: AnyObject {
     var engine: EngineID { get }
-    var viewController: UIViewController { get }
+    var viewController: PlayerViewController { get }
     var events: AsyncStream<PlaybackEvent> { get }
     var currentTime: Double { get }
     var duration: Double? { get }

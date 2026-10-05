@@ -91,11 +91,15 @@ struct TraktSettingsView: View {
     }
 }
 
-func qrImage(_ text: String) -> UIImage? {
+func qrImage(_ text: String) -> PlatformImage? {
     let filter = CIFilter.qrCodeGenerator()
     filter.message = Data(text.utf8)
     filter.correctionLevel = "M"
     guard let output = filter.outputImage?.transformed(by: CGAffineTransform(scaleX: 8, y: 8)),
           let cg = CIContext().createCGImage(output, from: output.extent) else { return nil }
+    #if canImport(UIKit)
     return UIImage(cgImage: cg)
+    #else
+    return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+    #endif
 }

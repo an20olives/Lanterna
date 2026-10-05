@@ -132,7 +132,7 @@ struct SecretRow: View {
             TextField("Paste here", text: $draft)
                 .autocorrectionDisabled()
                 #if !os(tvOS)
-                .textInputAutocapitalization(.never)
+                .neverCapitalize()
                 #endif
             HStack {
                 Button("Save") {

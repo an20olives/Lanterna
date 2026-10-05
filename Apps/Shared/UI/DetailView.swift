@@ -1,6 +1,5 @@
 import LanternaKit
 import SwiftUI
-import UIKit
 
 @MainActor
 @Observable
@@ -131,14 +130,14 @@ struct DetailView: View {
     private var titleText: some View { Text(summary.title).font(.largeTitle.bold()) }
 
     private var actions: some View {
-        #if os(iOS)
+        #if !os(tvOS)
         phoneActions
         #else
         tvActions
         #endif
     }
 
-    #if os(iOS)
+    #if !os(tvOS)
     private var phoneActions: some View {
         HStack(spacing: 12) {
             Button { Task { await play() } } label: {
@@ -412,11 +411,11 @@ struct DetailView: View {
         let app = URL(string: "youtube://www.youtube.com/watch?v=\(trailer.youtubeKey)")!
         let web = URL(string: "https://www.youtube.com/watch?v=\(trailer.youtubeKey)")!
         Task {
-            if await UIApplication.shared.open(app) { trailerMessage = nil; return }
+            if await openExternal(app) { trailerMessage = nil; return }
             #if os(tvOS)
             trailerMessage = "Install the YouTube app on this Apple TV to watch trailers."
             #else
-            if !(await UIApplication.shared.open(web)) { trailerMessage = "Could not open the trailer." }
+            if !(await openExternal(web)) { trailerMessage = "Could not open the trailer." }
             #endif
         }
     }
